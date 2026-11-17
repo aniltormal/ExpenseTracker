@@ -1,0 +1,2991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anil Tormal Personal Expense Tracker</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' };
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    @keyframes toastIn {
+      0% { opacity: 0; transform: scale(0.35); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes toastOut {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.75); }
+    }
+    @keyframes backdropIn {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+    @keyframes toastProgress {
+      0% { width: 100%; }
+      100% { width: 0%; }
+    }
+    .toast-enter {
+      animation: toastIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .toast-exit {
+      animation: toastOut 0.28s ease-in forwards;
+    }
+    .backdrop-enter {
+      animation: backdropIn 0.45s ease-out forwards;
+    }
+    .toast-bar {
+      animation: toastProgress 2.8s linear forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen p-0 sm:py-6 sm:px-4 transition-colors duration-200">
+  <main class="w-full max-w-full sm:max-w-lg mx-auto bg-white dark:bg-slate-900 rounded-none sm:rounded-2xl shadow-md border-y sm:border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors duration-200">
+    <!-- 1. Option 2 Slate-Teal Header with Profile Avatar & 3-Line Menu Button -->
+    <header class="bg-[#4b6b78] dark:bg-slate-800 px-6 py-4 text-white flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-11 h-11 rounded-full bg-emerald-100 text-emerald-900 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden border-2 border-white/30 shadow-sm">
+          <img id="header-avatar-img" alt="Profile" class="w-full h-full object-cover hidden" />
+          <span id="header-avatar-initials">AT</span>
+        </div>
+        <div class="min-w-0">
+          <h1 id="header-name" class="text-xl font-bold tracking-tight leading-tight text-white truncate">Anil Tormal</h1>
+          <p id="header-subtitle" class="text-xs sm:text-sm font-medium text-slate-200/90 truncate mt-0.5">Personal Expense Tracker</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <button
+          id="theme-toggle"
+          type="button"
+          aria-label="Toggle dark mode"
+          class="rounded-lg border border-white/25 bg-white/15 hover:bg-white/25 px-2.5 py-1.5 text-xs font-medium text-white transition-colors cursor-pointer"
+        >
+          🌙 Dark
+        </button>
+
+        <button
+          id="menu-btn"
+          type="button"
+          aria-label="Open app settings"
+          class="w-9 h-9 rounded-lg hover:bg-white/15 flex flex-col items-center justify-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <span class="w-5 h-0.5 bg-white rounded-full block"></span>
+          <span class="w-5 h-0.5 bg-white rounded-full block"></span>
+          <span class="w-5 h-0.5 bg-white rounded-full block"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Live Date, Day, Time & Language Toggle Bar -->
+    <div class="bg-slate-100/90 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700/80 px-5 py-2 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
+        <span>📅</span>
+        <span id="live-datetime-text" class="truncate">Mon, 16 Nov 2026 · 10:11 PM</span>
+      </div>
+      <button
+        id="lang-toggle"
+        type="button"
+        aria-label="Switch language"
+        class="shrink-0 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-700 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 transition-colors cursor-pointer"
+      >
+        मराठी / EN
+      </button>
+    </div>
+
+    <div class="p-3 sm:p-5">
+    <!-- 2. Total Spent & Monthly Budget Card -->
+    <section class="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/70 rounded-xl p-4 mb-6 space-y-3">
+      <div class="grid grid-cols-2 gap-3 items-start">
+        <div>
+          <span id="total-label" class="text-sm font-semibold text-emerald-800 dark:text-emerald-200 block">Total Spent</span>
+          <span id="total-amount" class="text-2xl font-bold text-emerald-700 dark:text-emerald-400 block mt-0.5">₹0.00</span>
+          <span id="filtered-summary" class="text-[11px] text-emerald-700 dark:text-emerald-300 hidden mt-0.5 block"></span>
+        </div>
+        <div id="top-remaining-box" class="rounded-lg px-3 py-2 text-right shadow-sm transition-colors duration-300" style="background-color: #15803d;">
+          <span id="remaining-label" class="text-[11px] font-bold text-white uppercase tracking-wide block">Remaining Budget</span>
+          <span id="top-remaining-amount" class="text-xl font-bold text-white block mt-0.5">₹0.00</span>
+          <div class="w-full h-1.5 bg-black/25 rounded-full overflow-hidden mt-1.5">
+            <div
+              id="budget-bar"
+              class="h-full bg-white rounded-full transition-all duration-300"
+              style="width: 100%"
+            ></div>
+          </div>
+          <div class="flex items-center justify-between gap-1 mt-1 text-[10px] font-bold text-white/95">
+            <span id="budget-display-amount">₹5,000.00</span>
+            <span id="top-remaining-pct">100% left</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Income & Net Balance Tally Strip -->
+      <div class="grid grid-cols-2 gap-2.5 pt-2.5 border-t border-emerald-200/80 dark:border-emerald-800/60">
+        <div class="rounded-lg bg-white/75 dark:bg-slate-900/60 border border-emerald-200/70 dark:border-emerald-800/50 px-3 py-2">
+          <span id="total-income-label" class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">Total Income</span>
+          <span id="total-income-amount" class="text-base font-bold text-emerald-700 dark:text-emerald-400 block mt-0.5">₹0.00</span>
+        </div>
+        <div class="rounded-lg bg-white/75 dark:bg-slate-900/60 border border-emerald-200/70 dark:border-emerald-800/50 px-3 py-2 text-right">
+          <span id="net-balance-label" class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">Net Balance</span>
+          <span id="net-balance-amount" class="text-base font-bold text-slate-900 dark:text-white block mt-0.5">₹0.00</span>
+        </div>
+      </div>
+
+      <!-- Dashboard Action Buttons -->
+      <div class="pt-3 border-t border-emerald-200/80 dark:border-emerald-800/60 space-y-2">
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            id="toggle-add-btn"
+            type="button"
+            class="w-full rounded-xl bg-gradient-to-r from-pink-600 via-rose-500 to-red-500 hover:from-pink-700 hover:via-rose-600 hover:to-red-600 active:scale-[0.99] text-white px-3 py-3 text-sm sm:text-base font-bold tracking-wide shadow-md shadow-rose-500/25 transition-all cursor-pointer"
+          >
+            Add Expense
+          </button>
+          <button
+            id="toggle-add-income-btn"
+            type="button"
+            class="w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-[0.99] text-white px-3 py-3 text-sm sm:text-base font-bold tracking-wide shadow-md shadow-emerald-500/25 transition-all cursor-pointer"
+          >
+            Add Income
+          </button>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            id="toggle-expenses-btn"
+            type="button"
+            class="w-full rounded-xl border border-sky-200 dark:border-sky-800/70 bg-sky-50/90 dark:bg-sky-950/50 hover:bg-sky-100 dark:hover:bg-sky-900/60 active:scale-[0.98] shadow-sm px-2.5 py-3 text-sm sm:text-base font-bold text-sky-800 dark:text-sky-200 transition-all cursor-pointer truncate"
+          >
+            📋 Expenses (0)
+          </button>
+          <button
+            id="toggle-breakdown-btn"
+            type="button"
+            class="w-full rounded-xl border border-violet-200 dark:border-violet-800/70 bg-violet-50/90 dark:bg-violet-950/50 hover:bg-violet-100 dark:hover:bg-violet-900/60 active:scale-[0.98] shadow-sm px-2.5 py-3 text-sm sm:text-base font-bold text-violet-800 dark:text-violet-200 transition-all cursor-pointer truncate"
+          >
+            📊 Categories
+          </button>
+          <button
+            id="toggle-search-btn"
+            type="button"
+            class="w-full rounded-xl border border-amber-200 dark:border-amber-800/70 bg-amber-50/90 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 active:scale-[0.98] shadow-sm px-2.5 py-3 text-sm sm:text-base font-bold text-amber-800 dark:text-amber-200 transition-all cursor-pointer truncate"
+          >
+            🔍 Search Expense
+          </button>
+          <button
+            id="toggle-budget-btn"
+            type="button"
+            class="w-full rounded-xl border border-emerald-200 dark:border-emerald-800/70 bg-emerald-100/80 dark:bg-emerald-950/60 hover:bg-emerald-200/70 dark:hover:bg-emerald-900/60 active:scale-[0.98] shadow-sm px-2.5 py-3 text-sm sm:text-base font-bold text-emerald-800 dark:text-emerald-200 transition-all cursor-pointer truncate"
+          >
+            🎯 Set Budget
+          </button>
+        </div>
+      </div>
+    </section>
+
+    </div>
+
+    <!-- Developer Credit Footer -->
+    <div class="w-full bg-slate-900 dark:bg-emerald-950 text-white dark:text-amber-300 px-3 py-3.5 text-center border-t border-slate-800 dark:border-emerald-800/70 transition-colors duration-200">
+      <p class="text-[15px] sm:text-base font-bold tracking-normal leading-snug">
+        <span class="block text-base sm:text-lg tracking-wider">This Application is Developed by</span>
+        <span class="block mt-0.5">Anil Bhaurao Tormal with 💔 S</span>
+      </p>
+    </div>
+  </main>
+
+  <!-- Set Budget Modal Popup -->
+  <div
+    id="budget-modal"
+    style="display: none;"
+    class="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-[2px] items-center justify-center p-4 hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="budget-modal-title"
+  >
+    <section class="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 toast-enter">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <h2 id="budget-modal-title" class="text-xl font-bold text-slate-900 dark:text-white">Set Monthly Budget</h2>
+        <button
+          id="close-budget-btn"
+          type="button"
+          aria-label="Close budget modal"
+          class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-lg leading-none cursor-pointer"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label for="budget-input" class="block text-base font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+            Monthly Expense Limit (₹)
+          </label>
+          <input
+            id="budget-input"
+            type="number"
+            min="0"
+            step="100"
+            placeholder="e.g., 10000"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-3 text-base font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+
+        <button
+          id="save-budget-btn"
+          type="button"
+          class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-3 text-base font-bold transition-colors cursor-pointer"
+        >
+          Save Budget
+        </button>
+      </div>
+    </section>
+  </div>
+
+
+  <!-- App Settings Menu Modal (☰) -->
+  <div
+    id="settings-modal"
+    style="display: none;"
+    class="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-[2px] items-center justify-center p-4 hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="settings-modal-title"
+  >
+    <section class="w-full max-w-xs rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-5 toast-enter">
+      <div class="flex items-center justify-between mb-4 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+        <h2 id="settings-modal-title" class="text-xl font-bold text-slate-900 dark:text-white">App Settings</h2>
+        <button
+          id="close-settings-btn"
+          type="button"
+          aria-label="Close settings"
+          class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-lg leading-none cursor-pointer"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <!-- Change Profile Photo -->
+        <label
+          for="profile-photo-input"
+          class="flex items-center justify-between w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 hover:bg-slate-100 dark:hover:bg-slate-800 px-3.5 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+        >
+          <span>Change Profile Photo</span>
+          <span class="text-sm">📷</span>
+        </label>
+        <input id="profile-photo-input" type="file" accept="image/*" class="hidden" />
+
+        <!-- Edit Name -->
+        <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 p-3 space-y-2">
+          <label for="profile-name-input" class="block text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+            Edit Display Name
+          </label>
+          <div class="flex items-center gap-1.5">
+            <input
+              id="profile-name-input"
+              type="text"
+              placeholder="Enter your name"
+              class="flex-1 min-w-0 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <button
+              id="save-name-btn"
+              type="button"
+              class="shrink-0 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+
+        <!-- Reset Photo -->
+        <button
+          id="reset-photo-btn"
+          type="button"
+          class="flex items-center justify-between w-full rounded-xl border border-rose-200 dark:border-rose-800/60 bg-rose-50/70 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 px-3.5 py-2.5 text-xs font-semibold text-rose-700 dark:text-rose-300 transition-colors cursor-pointer"
+        >
+          <span>Reset Photo</span>
+          <span class="text-sm">↺</span>
+        </button>
+      </div>
+    </section>
+  </div>
+
+
+    <!-- 5. Spending Breakdown by Category Modal Popup -->
+    <div
+      id="breakdown-modal"
+      style="display: none;" class="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[2px] items-center justify-center p-4 hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="breakdown-title"
+    >
+      <section id="breakdown-section" class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-5 max-h-[85vh] overflow-y-auto toast-enter">
+        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <h2 id="breakdown-title" class="text-xl font-bold text-slate-900 dark:text-white">
+            Spending by Category
+          </h2>
+          <button
+            id="close-breakdown-btn"
+            type="button"
+            aria-label="Close categories"
+            class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-lg leading-none cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+        <div id="breakdown-list" class="space-y-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3.5"></div>
+        <p id="breakdown-empty" class="hidden text-center text-xs text-slate-400 dark:text-slate-500 py-6 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+          No spending data to show yet.
+        </p>
+      </section>
+    </div>
+
+    <!-- 6. Expense List, Search, Filters & Exports Modal Popup -->
+    <div
+      id="expenses-modal"
+      style="display: none;" class="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[2px] items-center justify-center p-4 hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="expenses-modal-title"
+    >
+      <section id="expenses-section" class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-5 max-h-[85vh] overflow-y-auto toast-enter">
+        <div class="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <h2 id="expenses-modal-title" class="text-xl font-bold text-slate-900 dark:text-white">Expenses</h2>
+            <span id="expense-count" class="text-xs text-slate-500 dark:text-slate-400">0 items</span>
+          </div>
+
+          <button
+            id="close-expenses-btn"
+            type="button"
+            aria-label="Close expenses"
+            class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-lg leading-none cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="flex items-center gap-1.5 flex-wrap mb-3">
+          <button
+            id="export-jpg-btn"
+            type="button"
+            class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+          >
+            Export JPG
+          </button>
+          <button
+            id="export-pdf-btn"
+            type="button"
+            class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+          >
+            Export PDF
+          </button>
+          <button
+            id="export-csv-btn"
+            type="button"
+            class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+          >
+            Export CSV
+          </button>
+          <button
+            id="toggle-expenses-chart-btn"
+            type="button"
+            class="rounded-lg border border-emerald-500/70 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 transition-colors cursor-pointer"
+          >
+            📊 Chart
+          </button>
+        </div>
+
+        <!-- Toggleable Doughnut Chart inside Expenses Modal -->
+        <div id="expenses-chart-box" class="hidden mb-4 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/60 p-3.5">
+          <div class="flex flex-col items-center">
+            <canvas id="expenses-chart-canvas" width="220" height="220" class="max-w-full h-auto"></canvas>
+            <div id="expenses-chart-legend" class="w-full grid grid-cols-2 gap-1.5 mt-3"></div>
+          </div>
+        </div>
+
+
+
+      <ul id="expense-list" class="space-y-2"></ul>
+
+      <p id="empty-state" class="text-center text-sm text-slate-400 dark:text-slate-500 py-6 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+        No expenses yet. Tap Add Expense to get started!
+      </p>
+
+    <!-- 7. Data Backup, Restore & Clear All -->
+    <footer class="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800">
+      <div class="flex items-center justify-between gap-2 flex-wrap">
+        <div class="flex items-center gap-2">
+          <button
+            id="backup-json-btn"
+            type="button"
+            class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+          >
+            Export Data
+          </button>
+
+          <label
+            for="restore-json-input"
+            class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+          >
+            Restore Data
+          </label>
+          <input id="restore-json-input" type="file" accept=".json,application/json" class="hidden" />
+        </div>
+
+        <div id="clear-controls" class="flex items-center gap-1.5">
+          <button
+            id="clear-all-btn"
+            type="button"
+            class="rounded-lg border border-rose-200 dark:border-rose-800/70 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 disabled:opacity-40 disabled:cursor-not-allowed px-2.5 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300 transition-colors cursor-pointer"
+          >
+            Clear All
+          </button>
+
+          <button
+            id="confirm-clear-btn"
+            type="button"
+            class="hidden rounded-lg bg-rose-600 hover:bg-rose-700 px-2.5 py-1.5 text-xs font-medium text-white transition-colors cursor-pointer"
+          >
+            Confirm Clear
+          </button>
+
+          <button
+            id="cancel-clear-btn"
+            type="button"
+            class="hidden rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+
+      <p id="data-status" class="text-xs mt-2 hidden" role="status"></p>
+    </footer>
+
+      </section>
+    </div>
+
+
+    <!-- 6B. Search Expense Modal Popup -->
+    <div
+      id="search-modal"
+      style="display: none;" class="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[2px] items-center justify-center p-4 hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="search-modal-title"
+    >
+      <section class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-5 max-h-[85vh] overflow-y-auto toast-enter">
+        <div class="flex items-center justify-between gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <h2 id="search-modal-title" class="text-xl font-bold text-slate-900 dark:text-white">Search Expense</h2>
+            <span id="search-summary" class="text-xs font-semibold text-emerald-700 dark:text-emerald-400"></span>
+          </div>
+          <button
+            id="close-search-btn"
+            type="button"
+            aria-label="Close search"
+            class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-lg leading-none cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+
+      <!-- Search & Filter Controls -->
+      <div class="space-y-2 mb-3">
+        <input
+          id="search-input"
+          type="search"
+          aria-label="Search expenses by description"
+          placeholder="Search expenses by keyword..."
+          class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 px-3.5 py-2.5 text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+        />
+
+        <div class="grid grid-cols-3 gap-2">
+          <select
+            id="filter-month"
+            aria-label="Filter expenses by month"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            <option value="All">All Months</option>
+          </select>
+
+          <select
+            id="filter-category"
+            aria-label="Filter expenses by category"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            <option value="All">All Categories</option>
+            <option value="Food & Tea">Food &amp; Tea</option>
+            <option value="Groceries">Groceries</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Fuel & Travel">Fuel &amp; Travel</option>
+            <option value="Bills & Recharge">Bills &amp; Recharge</option>
+            <option value="Home & Rent">Home &amp; Rent</option>
+            <option value="Health & Medical">Health &amp; Medical</option>
+            <option value="Education">Education</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <select
+            id="filter-payment"
+            aria-label="Filter expenses by payment method"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            <option value="All">All Payments</option>
+            <option value="UPI">UPI</option>
+            <option value="Cash">Cash</option>
+            <option value="Card">Card</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+
+        <ul id="search-results-list" class="space-y-2"></ul>
+        <p id="search-empty-state" class="hidden text-center text-xs text-slate-400 dark:text-slate-500 py-6 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+          No matching expenses found.
+        </p>
+      </section>
+    </div>
+
+    <!-- 3. Add / Edit Expense Modal Popup -->
+    <div
+      id="expense-modal"
+      style="display: none;" class="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[2px] items-center justify-center p-4 hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-form-title"
+    >
+      <div class="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 max-h-[92vh] overflow-y-auto toast-enter">
+        <div class="flex items-center justify-between mb-5 pb-3.5 border-b border-slate-100 dark:border-slate-800">
+          <h2 id="modal-form-title" class="text-xl font-bold text-slate-900 dark:text-white">Add Expense</h2>
+          <button
+            id="close-modal-btn"
+            type="button"
+            aria-label="Close form"
+            class="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-lg leading-none cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+
+        <form id="expense-form" class="space-y-4" novalidate>
+
+      <div>
+        <label id="desc-label" for="desc-input" class="block text-base font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+          What did you spend on?
+        </label>
+        <input
+          id="desc-input"
+          type="text"
+          placeholder="e.g., Groceries, Tea, Internet bill"
+          class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 px-3.5 py-3 text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          required
+        />
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label for="amount-input" class="block text-base font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+            Amount (₹)
+          </label>
+          <input
+            id="amount-input"
+            type="number"
+            step="0.01"
+            min="0.01"
+            placeholder="e.g., 150"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 px-3.5 py-3 text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            required
+          />
+        </div>
+
+        <div>
+          <label id="category-label" for="category-input" class="block text-base font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+            Category
+          </label>
+          <select
+            id="category-input"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3.5 py-3 text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          >
+            <option value="Food & Tea">Food &amp; Tea</option>
+            <option value="Groceries">Groceries</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Fuel & Travel">Fuel &amp; Travel</option>
+            <option value="Bills & Recharge">Bills &amp; Recharge</option>
+            <option value="Home & Rent">Home &amp; Rent</option>
+            <option value="Health & Medical">Health &amp; Medical</option>
+            <option value="Education">Education</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div>
+          <label id="payment-label" for="payment-input" class="block text-base font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+            Payment Method
+          </label>
+          <select
+            id="payment-input"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3.5 py-3 text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+          >
+            <option value="UPI">UPI</option>
+            <option value="Cash">Cash</option>
+            <option value="Card">Card</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="date-input" class="block text-base font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+            Date
+          </label>
+          <input
+            id="date-input"
+            type="date"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-3 text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            required
+          />
+        </div>
+      </div>
+
+      <div>
+        <label for="remark-input" class="block text-base font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
+          Remark / Note <span class="text-xs font-normal text-slate-400">(Optional)</span>
+        </label>
+        <input
+          id="remark-input"
+          type="text"
+          placeholder="e.g., Shop name, paid to, or short note"
+          class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 px-3.5 py-3 text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+        />
+      </div>
+
+      <label id="recurring-row" class="flex items-center gap-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+        <input
+          id="recurring-input"
+          type="checkbox"
+          class="rounded border-slate-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500"
+        />
+        <span id="recurring-label-text">Save as a monthly recurring expense (for quick 1-click logging)</span>
+      </label>
+
+      <p id="form-error" class="text-sm font-medium text-rose-600 dark:text-rose-400 hidden" role="alert"></p>
+
+      <div class="flex items-center gap-2">
+        <button
+          id="submit-btn"
+          type="submit"
+          class="flex-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-base py-3.5 px-4 rounded-xl transition-colors cursor-pointer"
+        >
+          + Add Expense
+        </button>
+
+        <button
+          id="cancel-edit-btn"
+          type="button"
+          class="hidden bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-base py-3.5 px-4 rounded-xl transition-colors cursor-pointer"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+
+    <!-- 4. Monthly Recurring Expenses -->
+    <section id="recurring-section" class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 hidden">
+      <div class="flex items-center justify-between gap-2 mb-2.5">
+        <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+          Monthly Recurring
+        </h2>
+        <button
+          id="log-all-due-btn"
+          type="button"
+          class="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline cursor-pointer hidden"
+        >
+          + Log All Due This Month
+        </button>
+      </div>
+      <ul id="recurring-list" class="space-y-2"></ul>
+    </section>
+      </div>
+    </div>
+
+  <!-- Centered Gradient-Bordered Toast Popup Container -->
+  <div
+    id="toast-container"
+    aria-live="polite"
+    aria-atomic="true"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+  ></div>
+
+  <script>
+    const STORAGE_KEY = 'personal_expense_tracker_v2';
+    const BUDGET_STORAGE_KEY = 'personal_expense_tracker_budget';
+    const RECURRING_STORAGE_KEY = 'personal_expense_tracker_recurring';
+    const THEME_STORAGE_KEY = 'personal_expense_tracker_theme';
+    const PROFILE_STORAGE_KEY = 'personal_expense_tracker_profile';
+    const LANG_STORAGE_KEY = 'personal_expense_tracker_lang';
+
+    const DEFAULT_CATEGORIES = [
+      'Food & Tea',
+      'Groceries',
+      'Shopping',
+      'Fuel & Travel',
+      'Bills & Recharge',
+      'Home & Rent',
+      'Health & Medical',
+      'Education'
+    ];
+    const INCOME_CATEGORIES = [
+      'Salary',
+      'Business',
+      'Farming',
+      'Gift / Return'
+    ];
+    const CUSTOM_CAT_STORAGE_KEY = 'personal_expense_tracker_custom_cats';
+
+    const CATEGORY_STYLES = {
+      Groceries: { badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', bar: 'bg-emerald-500' },
+      'Food & Tea': { badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', bar: 'bg-amber-500' },
+      Food: { badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', bar: 'bg-amber-500' },
+      'Fuel & Travel': { badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300', bar: 'bg-sky-500' },
+      Transport: { badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300', bar: 'bg-sky-500' },
+      'Bills & Recharge': { badge: 'bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-300', bar: 'bg-violet-500' },
+      Bills: { badge: 'bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-300', bar: 'bg-violet-500' },
+      'Home & Rent': { badge: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300', bar: 'bg-indigo-500' },
+      'Health & Medical': { badge: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', bar: 'bg-rose-500' },
+      Health: { badge: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', bar: 'bg-rose-500' },
+      Shopping: { badge: 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300', bar: 'bg-pink-500' },
+      Education: { badge: 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300', bar: 'bg-teal-500' },
+      Salary: { badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', bar: 'bg-emerald-500' },
+      Business: { badge: 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300', bar: 'bg-teal-500' },
+      Farming: { badge: 'bg-lime-100 text-lime-800 dark:bg-lime-900/50 dark:text-lime-300', bar: 'bg-lime-500' },
+      'Gift / Return': { badge: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300', bar: 'bg-cyan-500' },
+      Other: { badge: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200', bar: 'bg-slate-500' }
+    };
+
+    function getTodayISO() {
+      const now = new Date();
+      const offsetMs = now.getTimezoneOffset() * 60000;
+      return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+    }
+
+    // --- State ---
+    let expenses = loadExpenses();
+    let monthlyBudget = loadBudget();
+    let recurringTemplates = loadRecurring();
+    let isDarkMode = loadTheme();
+    let userProfile = loadProfile();
+    let currentLang = loadLang();
+    let customCategories = loadCustomCategories();
+    let nextId = expenses.reduce((max, item) => Math.max(max, item.id || 0), 0) + 1;
+    let nextRecurringId = recurringTemplates.reduce((max, item) => Math.max(max, item.id || 0), 0) + 1;
+    let editingId = null;
+    let entryType = 'expense';
+    let isModalOpen = false;
+    let showExpenses = false;
+    let showBreakdown = false;
+    let showSearchModal = false;
+    let showExpensesChart = false;
+
+    // --- DOM Elements ---
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const menuBtn = document.getElementById('menu-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const headerAvatarImg = document.getElementById('header-avatar-img');
+    const headerAvatarInitials = document.getElementById('header-avatar-initials');
+    const headerNameEl = document.getElementById('header-name');
+    const profilePhotoInput = document.getElementById('profile-photo-input');
+    const profileNameInput = document.getElementById('profile-name-input');
+    const saveNameBtn = document.getElementById('save-name-btn');
+    const resetPhotoBtn = document.getElementById('reset-photo-btn');
+    const toastContainer = document.getElementById('toast-container');
+
+    const TOAST_THEMES = {
+      success: {
+        coin: 'bg-gradient-to-br from-emerald-400 via-emerald-600 to-teal-700 border-[3px] border-amber-300 text-amber-100 shadow-lg shadow-emerald-600/35',
+        valueColor: 'text-emerald-700 dark:text-emerald-400',
+        icon: '₹'
+      },
+      info: {
+        coin: 'bg-gradient-to-br from-teal-400 via-emerald-600 to-cyan-700 border-[3px] border-amber-300 text-amber-100 shadow-lg shadow-teal-600/35',
+        valueColor: 'text-teal-700 dark:text-teal-400',
+        icon: '₹'
+      },
+      danger: {
+        coin: 'bg-gradient-to-br from-rose-500 via-pink-600 to-red-700 border-[3px] border-amber-300 text-white shadow-lg shadow-rose-600/35',
+        valueColor: 'text-rose-600 dark:text-rose-400',
+        icon: '!'
+      }
+    };
+
+    function showToast(title, message = '', type = 'success') {
+      if (!toastContainer) return;
+      const theme = TOAST_THEMES[type] || TOAST_THEMES.success;
+
+      toastContainer.innerHTML = '';
+
+      const backdrop = document.createElement('div');
+      backdrop.className = 'pointer-events-auto fixed inset-0 bg-slate-950/35 backdrop-blur-md flex items-center justify-center p-4 backdrop-enter';
+
+      const card = document.createElement('div');
+      card.className = 'relative w-56 rounded-3xl bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-700/80 shadow-[0_20px_50px_rgba(15,23,42,0.22)] pt-9 pb-4 px-5 text-center mt-4 toast-enter';
+
+      const coinBox = document.createElement('div');
+      coinBox.className = `absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full ${theme.coin} flex items-center justify-center font-extrabold text-xl`;
+      coinBox.textContent = theme.icon;
+
+      const titleEl = document.createElement('p');
+      titleEl.className = 'text-sm font-semibold text-slate-500 dark:text-slate-400 leading-tight';
+      titleEl.textContent = title;
+
+      card.appendChild(coinBox);
+      card.appendChild(titleEl);
+
+      if (message) {
+        const msgEl = document.createElement('p');
+        msgEl.className = `text-lg font-extrabold ${theme.valueColor} mt-1 leading-snug break-words`;
+        msgEl.textContent = message;
+        card.appendChild(msgEl);
+      }
+
+      const okBtn = document.createElement('button');
+      okBtn.type = 'button';
+      okBtn.textContent = 'Done';
+      okBtn.className = 'mt-3.5 w-full py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-sm text-sm font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer';
+      card.appendChild(okBtn);
+
+      backdrop.appendChild(card);
+      toastContainer.appendChild(backdrop);
+
+      let removed = false;
+      const dismiss = () => {
+        if (removed) return;
+        removed = true;
+        card.classList.remove('toast-enter');
+        card.classList.add('toast-exit');
+        setTimeout(() => {
+          if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        }, 180);
+      };
+
+      const timer = setTimeout(dismiss, 2800);
+      okBtn.addEventListener('click', () => {
+        clearTimeout(timer);
+        dismiss();
+      });
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) {
+          clearTimeout(timer);
+          dismiss();
+        }
+      });
+    }
+    const expenseModal = document.getElementById('expense-modal');
+    const modalFormTitle = document.getElementById('modal-form-title');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const form = document.getElementById('expense-form');
+
+    const descLabel = document.getElementById('desc-label');
+    const categoryLabel = document.getElementById('category-label');
+    const paymentLabel = document.getElementById('payment-label');
+    const recurringLabelText = document.getElementById('recurring-label-text');
+    const totalIncomeEl = document.getElementById('total-income-amount');
+    const netBalanceEl = document.getElementById('net-balance-amount');
+    const descInput = document.getElementById('desc-input');
+    const amountInput = document.getElementById('amount-input');
+    const categoryInput = document.getElementById('category-input');
+    const remarkInput = document.getElementById('remark-input');
+    const paymentInput = document.getElementById('payment-input');
+    const dateInput = document.getElementById('date-input');
+    const recurringRow = document.getElementById('recurring-row');
+    const recurringInput = document.getElementById('recurring-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const cancelEditBtn = document.getElementById('cancel-edit-btn');
+    const recurringSection = document.getElementById('recurring-section');
+    const recurringList = document.getElementById('recurring-list');
+    const logAllDueBtn = document.getElementById('log-all-due-btn');
+    const searchInput = document.getElementById('search-input');
+    const filterMonthSelect = document.getElementById('filter-month');
+    const filterSelect = document.getElementById('filter-category');
+    const filterPaymentSelect = document.getElementById('filter-payment');
+    const exportCsvBtn = document.getElementById('export-csv-btn');
+    const exportPdfBtn = document.getElementById('export-pdf-btn');
+    const exportJpgBtn = document.getElementById('export-jpg-btn');
+    const toggleExpensesChartBtn = document.getElementById('toggle-expenses-chart-btn');
+    const expensesChartBox = document.getElementById('expenses-chart-box');
+    const expensesChartCanvas = document.getElementById('expenses-chart-canvas');
+    const expensesChartLegend = document.getElementById('expenses-chart-legend');
+    const backupJsonBtn = document.getElementById('backup-json-btn');
+    const restoreJsonInput = document.getElementById('restore-json-input');
+    const clearAllBtn = document.getElementById('clear-all-btn');
+    const confirmClearBtn = document.getElementById('confirm-clear-btn');
+    const cancelClearBtn = document.getElementById('cancel-clear-btn');
+    const dataStatus = document.getElementById('data-status');
+    const toggleBudgetBtn = document.getElementById('toggle-budget-btn');
+    const budgetModal = document.getElementById('budget-modal');
+    const closeBudgetBtn = document.getElementById('close-budget-btn');
+    const saveBudgetBtn = document.getElementById('save-budget-btn');
+    const budgetInput = document.getElementById('budget-input');
+    const budgetDisplayAmount = document.getElementById('budget-display-amount');
+    const topRemainingPct = document.getElementById('top-remaining-pct');
+    const liveDatetimeText = document.getElementById('live-datetime-text');
+    const langToggleBtn = document.getElementById('lang-toggle');
+    const remainingLabelEl = document.getElementById('remaining-label');
+    const totalIncomeLabelEl = document.getElementById('total-income-label');
+    const netBalanceLabelEl = document.getElementById('net-balance-label');
+    const budgetBar = document.getElementById('budget-bar');
+    const toggleAddBtn = document.getElementById('toggle-add-btn');
+    const toggleAddIncomeBtn = document.getElementById('toggle-add-income-btn');
+    const toggleExpensesBtn = document.getElementById('toggle-expenses-btn');
+    const toggleBreakdownBtn = document.getElementById('toggle-breakdown-btn');
+    const toggleSearchBtn = document.getElementById('toggle-search-btn');
+    const searchModal = document.getElementById('search-modal');
+    const closeSearchBtn = document.getElementById('close-search-btn');
+    const searchResultsList = document.getElementById('search-results-list');
+    const searchEmptyState = document.getElementById('search-empty-state');
+    const searchSummary = document.getElementById('search-summary');
+    const expensesModal = document.getElementById('expenses-modal');
+    const closeExpensesBtn = document.getElementById('close-expenses-btn');
+    const breakdownModal = document.getElementById('breakdown-modal');
+    const closeBreakdownBtn = document.getElementById('close-breakdown-btn');
+    const expensesSection = document.getElementById('expenses-section');
+    const breakdownEmpty = document.getElementById('breakdown-empty');
+    const breakdownSection = document.getElementById('breakdown-section');
+    const breakdownTitle = document.getElementById('breakdown-title');
+    const breakdownList = document.getElementById('breakdown-list');
+    const formError = document.getElementById('form-error');
+    const totalLabel = document.getElementById('total-label');
+    const totalEl = document.getElementById('total-amount');
+    const topRemainingEl = document.getElementById('top-remaining-amount');
+    const topRemainingBox = document.getElementById('top-remaining-box');
+    const filteredSummaryEl = document.getElementById('filtered-summary');
+    const countEl = document.getElementById('expense-count');
+    const listEl = document.getElementById('expense-list');
+    const emptyStateEl = document.getElementById('empty-state');
+
+    // Initialize date, budget, and theme
+    dateInput.value = getTodayISO();
+    budgetInput.value = monthlyBudget > 0 ? monthlyBudget : '';
+    applyTheme();
+    applyProfile();
+
+    function loadProfile() {
+      try {
+        const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
+        if (!raw) return { name: 'Anil Tormal', photo: '' };
+        const parsed = JSON.parse(raw);
+        return {
+          name: (parsed && parsed.name) ? parsed.name : 'Anil Tormal',
+          photo: (parsed && parsed.photo) ? parsed.photo : ''
+        };
+      } catch (err) {
+        return { name: 'Anil Tormal', photo: '' };
+      }
+    }
+
+    function saveProfile() {
+      try {
+        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfile));
+      } catch (err) {
+        // Ignore storage errors
+      }
+    }
+
+    function getInitials(name) {
+      const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+      if (parts.length === 0) return 'AT';
+      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+
+    function applyProfile() {
+      headerNameEl.textContent = userProfile.name;
+      profileNameInput.value = userProfile.name;
+      headerAvatarInitials.textContent = getInitials(userProfile.name);
+
+      if (userProfile.photo) {
+        headerAvatarImg.src = userProfile.photo;
+        headerAvatarImg.classList.remove('hidden');
+        headerAvatarInitials.classList.add('hidden');
+      } else {
+        headerAvatarImg.removeAttribute('src');
+        headerAvatarImg.classList.add('hidden');
+        headerAvatarInitials.classList.remove('hidden');
+      }
+    }
+
+    function openSettingsModal() {
+      profileNameInput.value = userProfile.name;
+      settingsModal.classList.remove('hidden');
+      settingsModal.classList.add('flex');
+      settingsModal.style.display = 'flex';
+    }
+
+    function closeSettingsModal() {
+      settingsModal.classList.add('hidden');
+      settingsModal.classList.remove('flex');
+      settingsModal.style.display = 'none';
+    }
+
+    menuBtn.addEventListener('click', openSettingsModal);
+    closeSettingsBtn.addEventListener('click', closeSettingsModal);
+    settingsModal.addEventListener('click', (e) => {
+      if (e.target === settingsModal) closeSettingsModal();
+    });
+
+    profilePhotoInput.addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const size = 200;
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          userProfile.photo = canvas.toDataURL('image/jpeg', 0.85);
+          saveProfile();
+          applyProfile();
+          closeSettingsModal();
+          showToast('Profile Photo Updated', userProfile.name, 'success');
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+      profilePhotoInput.value = '';
+    });
+
+    saveNameBtn.addEventListener('click', () => {
+      const nextName = profileNameInput.value.trim();
+      if (!nextName) return;
+      userProfile.name = nextName;
+      saveProfile();
+      applyProfile();
+      closeSettingsModal();
+      showToast('Name Updated', nextName, 'info');
+    });
+
+    resetPhotoBtn.addEventListener('click', () => {
+      userProfile.photo = '';
+      saveProfile();
+      applyProfile();
+      closeSettingsModal();
+      showToast('Photo Reset', 'Default initials restored', 'danger');
+    });
+
+    const I18N = {
+      en: {
+        subtitle: 'Personal Expense Tracker',
+        totalSpent: 'Total Spent',
+        remainingBudget: 'Remaining Budget',
+        totalIncome: 'Total Income',
+        netBalance: 'Net Balance',
+        addExpense: 'Add Expense',
+        addIncome: 'Add Income',
+        expenses: 'Expenses',
+        categories: 'Categories',
+        searchExpense: 'Search Expense',
+        setBudget: 'Set Budget',
+        left: 'left',
+        notSet: 'Not set',
+        langBtn: 'मराठी'
+      },
+      mr: {
+        subtitle: 'वैयक्तिक खर्च आणि उत्पन्न ट्रॅकर',
+        totalSpent: 'एकूण खर्च',
+        remainingBudget: 'शिल्लक बजेट',
+        totalIncome: 'एकूण उत्पन्न',
+        netBalance: 'निव्वळ शिल्लक',
+        addExpense: 'खर्च जोडा',
+        addIncome: 'उत्पन्न जोडा',
+        expenses: 'खर्च यादी',
+        categories: 'कॅटेगरी',
+        searchExpense: 'खर्च शोधा',
+        setBudget: 'बजेट सेट करा',
+        left: 'शिल्लक',
+        notSet: 'सेट नाही',
+        langBtn: 'English'
+      }
+    };
+
+    function loadLang() {
+      try {
+        return localStorage.getItem(LANG_STORAGE_KEY) === 'mr' ? 'mr' : 'en';
+      } catch (err) {
+        return 'en';
+      }
+    }
+
+    function saveLang(lang) {
+      try {
+        localStorage.setItem(LANG_STORAGE_KEY, lang);
+      } catch (err) {
+        // Ignore storage errors
+      }
+    }
+
+    function updateLiveDateTime() {
+      if (!liveDatetimeText) return;
+      const now = new Date();
+      const locale = currentLang === 'mr' ? 'mr-IN' : 'en-IN';
+      const dateStr = now.toLocaleDateString(locale, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+      const timeStr = now.toLocaleTimeString(locale, {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      liveDatetimeText.textContent = `${dateStr} · ${timeStr}`;
+    }
+
+    function applyLanguage() {
+      const t = I18N[currentLang] || I18N.en;
+      const subEl = document.getElementById('header-subtitle');
+      if (subEl) subEl.textContent = t.subtitle;
+      if (remainingLabelEl) remainingLabelEl.textContent = t.remainingBudget;
+      if (totalIncomeLabelEl) totalIncomeLabelEl.textContent = t.totalIncome;
+      if (netBalanceLabelEl) netBalanceLabelEl.textContent = t.netBalance;
+      if (toggleAddBtn) toggleAddBtn.textContent = t.addExpense;
+      if (toggleAddIncomeBtn) toggleAddIncomeBtn.textContent = t.addIncome;
+      if (toggleBreakdownBtn) toggleBreakdownBtn.textContent = `📊 ${t.categories}`;
+      if (toggleSearchBtn) toggleSearchBtn.textContent = `🔍 ${t.searchExpense}`;
+      if (toggleBudgetBtn) toggleBudgetBtn.textContent = `🎯 ${t.setBudget}`;
+      if (langToggleBtn) langToggleBtn.textContent = t.langBtn;
+      updateLiveDateTime();
+    }
+
+    langToggleBtn.addEventListener('click', () => {
+      currentLang = currentLang === 'en' ? 'mr' : 'en';
+      saveLang(currentLang);
+      applyLanguage();
+      render();
+      showToast(currentLang === 'mr' ? 'मराठी भाषा सुरू' : 'English Selected', '', 'info');
+    });
+
+    setInterval(updateLiveDateTime, 15000);
+
+    function loadTheme() {
+      try {
+        return localStorage.getItem(THEME_STORAGE_KEY) === 'dark';
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function saveTheme(dark) {
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, dark ? 'dark' : 'light');
+      } catch (err) {
+        // Ignore storage errors
+      }
+    }
+
+    function applyTheme() {
+      if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+        themeToggleBtn.textContent = '☀️ Light';
+      } else {
+        document.documentElement.classList.remove('dark');
+        themeToggleBtn.textContent = '🌙 Dark';
+      }
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+      isDarkMode = !isDarkMode;
+      saveTheme(isDarkMode);
+      applyTheme();
+      showToast(isDarkMode ? 'Dark Mode Enabled' : 'Light Mode Enabled', 'Theme preference saved', 'info');
+    });
+
+    function loadExpenses() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        const fallbackDate = getTodayISO();
+        return parsed.map((item) => ({
+          ...item,
+          type: item.type === 'income' ? 'income' : 'expense',
+          paymentMethod: item.paymentMethod || 'Cash',
+          date: item.date || fallbackDate
+        }));
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function saveExpenses() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+      } catch (err) {
+        // Ignore storage errors
+      }
+    }
+
+    function loadBudget() {
+      try {
+        const raw = localStorage.getItem(BUDGET_STORAGE_KEY);
+        if (raw === null) return 5000;
+        const val = parseFloat(raw);
+        return isNaN(val) || val < 0 ? 0 : val;
+      } catch (err) {
+        return 5000;
+      }
+    }
+
+    function saveBudget(value) {
+      try {
+        localStorage.setItem(BUDGET_STORAGE_KEY, String(value));
+      } catch (err) {
+        // Ignore storage errors
+      }
+    }
+
+    function loadRecurring() {
+      try {
+        const raw = localStorage.getItem(RECURRING_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed)
+          ? parsed.map((t) => ({ ...t, paymentMethod: t.paymentMethod || 'UPI' }))
+          : [];
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function saveRecurring() {
+      try {
+        localStorage.setItem(RECURRING_STORAGE_KEY, JSON.stringify(recurringTemplates));
+      } catch (err) {
+        // Ignore storage errors
+      }
+    }
+
+    function formatCurrency(value) {
+      return '₹' + value.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function formatCurrencyPlain(value) {
+      return 'Rs. ' + value.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function formatDate(isoDate) {
+      if (!isoDate) return '';
+      const parts = isoDate.split('-');
+      if (parts.length !== 3) return isoDate;
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      return d.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+
+    function formatMonthLabel(yearMonth) {
+      const parts = yearMonth.split('-');
+      if (parts.length !== 2) return yearMonth;
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
+      return d.toLocaleDateString('en-IN', {
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+
+    function showError(message) {
+      if (message) {
+        formError.textContent = message;
+        formError.classList.remove('hidden');
+      } else {
+        formError.textContent = '';
+        formError.classList.add('hidden');
+      }
+    }
+
+    function showDataStatus(message, isError = false) {
+      dataStatus.textContent = message;
+      dataStatus.className = isError
+        ? 'text-xs mt-2 text-rose-600 dark:text-rose-400'
+        : 'text-xs mt-2 text-emerald-700 dark:text-emerald-400';
+      dataStatus.classList.remove('hidden');
+    }
+
+    // --- Custom Styled Dropdown UI for all <select> elements ---
+    const OPTION_BADGES = {
+      Groceries: '🛒',
+      'Food & Tea': '🍽️',
+      Food: '🍽️',
+      'Fuel & Travel': '⛽',
+      Transport: '🚌',
+      'Bills & Recharge': '🧾',
+      Bills: '🧾',
+      'Home & Rent': '🏠',
+      'Health & Medical': '💊',
+      Health: '💊',
+      Shopping: '🛍️',
+      Education: '📚',
+      Other: '✏️',
+      UPI: '📱',
+      Cash: '💵',
+      Card: '💳',
+      'Bank Transfer': '🏦',
+      Salary: '💼',
+      Business: '🏪',
+      Farming: '🌾',
+      'Gift / Return': '🎁',
+      All: '✨'
+    };
+
+    const customSelectRefreshers = new WeakMap();
+
+    function closeAllCustomDropdowns(exceptMenu = null) {
+      document.querySelectorAll('.custom-select-menu').forEach((menu) => {
+        if (menu !== exceptMenu) menu.classList.add('hidden');
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.custom-select-wrapper')) {
+        closeAllCustomDropdowns();
+      }
+    });
+
+    function enhanceSelect(selectEl, compact = false) {
+      if (!selectEl || selectEl.dataset.enhanced === '1') return;
+      selectEl.dataset.enhanced = '1';
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'custom-select-wrapper relative w-full';
+      selectEl.parentNode.insertBefore(wrapper, selectEl);
+      selectEl.classList.add('hidden');
+      wrapper.appendChild(selectEl);
+
+      const trigger = document.createElement('button');
+      trigger.type = 'button';
+      trigger.className = compact
+        ? 'w-full flex items-center justify-between gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/70 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors cursor-pointer'
+        : 'w-full flex items-center justify-between gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/70 px-3.5 py-3 text-base font-semibold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors cursor-pointer';
+
+      const labelWrap = document.createElement('span');
+      labelWrap.className = 'flex items-center gap-1.5 truncate';
+
+      const chevron = document.createElement('span');
+      chevron.className = 'text-[10px] text-slate-400 shrink-0';
+      chevron.textContent = '▾';
+
+      trigger.appendChild(labelWrap);
+      trigger.appendChild(chevron);
+
+      const menu = document.createElement('div');
+      menu.className = 'custom-select-menu hidden absolute left-0 min-w-full w-max max-w-[240px] mt-1.5 z-50 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl p-2 max-h-64 overflow-y-auto space-y-1';
+
+      wrapper.appendChild(trigger);
+      wrapper.appendChild(menu);
+
+      function refresh() {
+        const currentVal = selectEl.value;
+        const selectedOpt = Array.from(selectEl.options).find((o) => o.value === currentVal) || selectEl.options[0];
+        const icon = OPTION_BADGES[currentVal] || (selectEl.id === 'filter-month' ? '📅' : '•');
+
+        labelWrap.innerHTML = '';
+        const ic = document.createElement('span');
+        ic.textContent = icon;
+        const txt = document.createElement('span');
+        txt.className = 'truncate';
+        txt.textContent = selectedOpt ? selectedOpt.textContent : '';
+        labelWrap.appendChild(ic);
+        labelWrap.appendChild(txt);
+
+        menu.innerHTML = '';
+        Array.from(selectEl.options).forEach((opt) => {
+          const isSelected = opt.value === currentVal;
+          const itemBtn = document.createElement('button');
+          itemBtn.type = 'button';
+          itemBtn.className = isSelected
+            ? 'w-full flex items-center justify-between gap-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 px-3 py-2.5 text-sm font-bold transition-colors cursor-pointer text-left'
+            : 'w-full flex items-center justify-between gap-2.5 rounded-xl text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-2.5 text-sm font-bold transition-colors cursor-pointer text-left';
+
+          const left = document.createElement('span');
+          left.className = 'flex items-center gap-2 truncate';
+          const optIcon = document.createElement('span');
+          optIcon.className = 'text-base leading-none shrink-0';
+          optIcon.textContent = OPTION_BADGES[opt.value] || (selectEl.id === 'filter-month' ? '📅' : '•');
+          const optText = document.createElement('span');
+          optText.className = 'truncate';
+          optText.textContent = opt.textContent;
+          left.appendChild(optIcon);
+          left.appendChild(optText);
+
+          itemBtn.appendChild(left);
+
+          if (isSelected) {
+            const check = document.createElement('span');
+            check.className = 'text-emerald-600 dark:text-emerald-400 font-bold shrink-0';
+            check.textContent = '✓';
+            itemBtn.appendChild(check);
+          }
+
+          itemBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectEl.value = opt.value;
+            menu.classList.add('hidden');
+            refresh();
+            selectEl.dispatchEvent(new Event('change'));
+          });
+
+          menu.appendChild(itemBtn);
+        });
+      }
+
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const willOpen = menu.classList.contains('hidden');
+        closeAllCustomDropdowns(menu);
+        if (willOpen) {
+          refresh();
+          menu.classList.remove('hidden');
+        } else {
+          menu.classList.add('hidden');
+        }
+      });
+
+      customSelectRefreshers.set(selectEl, refresh);
+      refresh();
+    }
+
+    function refreshCustomSelect(selectEl) {
+      const fn = customSelectRefreshers.get(selectEl);
+      if (fn) fn();
+    }
+
+    function loadCustomCategories() {
+      try {
+        const raw = localStorage.getItem(CUSTOM_CAT_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function saveCustomCategories() {
+      try {
+        localStorage.setItem(CUSTOM_CAT_STORAGE_KEY, JSON.stringify(customCategories));
+      } catch (err) {
+        // Ignore storage errors
+      }
+    }
+
+    function syncCategoryDropdowns() {
+      const prevFormVal = categoryInput.value || 'Food & Tea';
+      const prevFilterVal = filterSelect.value || 'All';
+
+      const activeCats = entryType === 'income' ? INCOME_CATEGORIES : DEFAULT_CATEGORIES;
+      categoryInput.innerHTML = '';
+      activeCats.forEach((cat) => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        categoryInput.appendChild(opt);
+      });
+      const otherOpt = document.createElement('option');
+      otherOpt.value = 'Other';
+      otherOpt.textContent = 'Other';
+      categoryInput.appendChild(otherOpt);
+
+      categoryInput.value = (prevFormVal === 'Other' || activeCats.includes(prevFormVal))
+        ? prevFormVal
+        : activeCats[0];
+
+      // Filter dropdown includes default categories + any custom categories present in saved expenses
+      const filterCats = [...DEFAULT_CATEGORIES];
+      expenses.forEach((item) => {
+        if (item.category && !filterCats.includes(item.category) && item.category !== 'Other') {
+          filterCats.push(item.category);
+        }
+      });
+
+      filterSelect.innerHTML = '<option value="All">All Categories</option>';
+      filterCats.forEach((cat) => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        filterSelect.appendChild(opt);
+      });
+      const otherFilterOpt = document.createElement('option');
+      otherFilterOpt.value = 'Other';
+      otherFilterOpt.textContent = 'Other';
+      filterSelect.appendChild(otherFilterOpt);
+
+      filterSelect.value = (prevFilterVal === 'All' || prevFilterVal === 'Other' || filterCats.includes(prevFilterVal)) ? prevFilterVal : 'All';
+
+      refreshCustomSelect(categoryInput);
+      refreshCustomSelect(filterSelect);
+    }
+
+
+
+    function syncMonthOptions() {
+      const currentSelection = filterMonthSelect.value || 'All';
+      const months = new Set([getTodayISO().slice(0, 7)]);
+      expenses.forEach((item) => {
+        if (item.date && item.date.length >= 7) {
+          months.add(item.date.slice(0, 7));
+        }
+      });
+
+      const sortedMonths = Array.from(months).sort((a, b) => b.localeCompare(a));
+
+      filterMonthSelect.innerHTML = '<option value="All">All Months</option>';
+      sortedMonths.forEach((ym) => {
+        const opt = document.createElement('option');
+        opt.value = ym;
+        opt.textContent = formatMonthLabel(ym);
+        filterMonthSelect.appendChild(opt);
+      });
+
+      if (currentSelection === 'All' || months.has(currentSelection)) {
+        filterMonthSelect.value = currentSelection;
+      } else {
+        filterMonthSelect.value = 'All';
+      }
+      refreshCustomSelect(filterMonthSelect);
+    }
+
+    function setEntryType(nextType) {
+      entryType = nextType === 'income' ? 'income' : 'expense';
+      if (entryType === 'income') {
+        modalFormTitle.textContent = editingId !== null ? 'Edit Income' : 'Add Income';
+        descLabel.textContent = 'Where did you receive money from?';
+        descInput.placeholder = 'e.g., Salary, Crop sale, Payment received';
+        categoryLabel.textContent = 'Income Source';
+        paymentLabel.textContent = 'Received Via';
+        recurringInput.checked = false;
+        recurringRow.classList.add('hidden');
+        if (editingId === null) {
+          submitBtn.textContent = 'Add Income';
+          submitBtn.className = 'flex-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-base py-3.5 px-4 rounded-xl transition-colors cursor-pointer';
+        }
+      } else {
+        modalFormTitle.textContent = editingId !== null ? 'Edit Expense' : 'Add Expense';
+        descLabel.textContent = 'What did you spend on?';
+        descInput.placeholder = 'e.g., Groceries, Tea, Internet bill';
+        categoryLabel.textContent = 'Category';
+        paymentLabel.textContent = 'Payment Method';
+        recurringLabelText.textContent = 'Save as a monthly recurring expense (for quick 1-click logging)';
+        if (editingId === null) {
+          recurringRow.classList.remove('hidden');
+          submitBtn.textContent = '+ Add Expense';
+          submitBtn.className = 'flex-1 bg-gradient-to-r from-pink-600 via-rose-500 to-red-500 hover:from-pink-700 hover:via-rose-600 hover:to-red-600 text-white font-bold text-base py-3.5 px-4 rounded-xl transition-colors cursor-pointer';
+        }
+      }
+      syncCategoryDropdowns();
+    }
+
+    function openExpenseModal() {
+      isModalOpen = true;
+      expenseModal.classList.remove('hidden');
+      expenseModal.classList.add('flex');
+      expenseModal.style.display = 'flex';
+    }
+
+    function closeExpenseModal() {
+      isModalOpen = false;
+      expenseModal.classList.add('hidden');
+      expenseModal.classList.remove('flex');
+      expenseModal.style.display = 'none';
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
+    }
+
+    function startEdit(item) {
+      showExpenses = false;
+      expensesModal.classList.add('hidden');
+      expensesModal.classList.remove('flex');
+      expensesModal.style.display = 'none';
+      editingId = item.id;
+      setEntryType(item.type === 'income' ? 'income' : 'expense');
+      descInput.value = item.description;
+      amountInput.value = item.amount;
+      const validList = entryType === 'income' ? INCOME_CATEGORIES : DEFAULT_CATEGORIES;
+      categoryInput.value = validList.includes(item.category) ? item.category : 'Other';
+      remarkInput.value = item.remark || '';
+      paymentInput.value = item.paymentMethod || 'Cash';
+      refreshCustomSelect(categoryInput);
+      refreshCustomSelect(paymentInput);
+      dateInput.value = item.date || getTodayISO();
+      recurringInput.checked = false;
+      recurringRow.classList.add('hidden');
+
+      submitBtn.textContent = 'Save Changes';
+      submitBtn.className = 'flex-1 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-bold text-base py-3.5 px-4 rounded-xl transition-colors cursor-pointer';
+      cancelEditBtn.classList.remove('hidden');
+      showError('');
+      openExpenseModal();
+      render();
+      descInput.focus();
+    }
+
+    function cancelEdit() {
+      editingId = null;
+      setEntryType('expense');
+      descInput.value = '';
+      amountInput.value = '';
+      categoryInput.value = 'Food & Tea';
+      remarkInput.value = '';
+      paymentInput.value = 'UPI';
+      refreshCustomSelect(categoryInput);
+      refreshCustomSelect(paymentInput);
+      dateInput.value = getTodayISO();
+      recurringInput.checked = false;
+      recurringRow.classList.remove('hidden');
+
+      submitBtn.textContent = '+ Add Expense';
+      submitBtn.className = 'flex-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-base py-3.5 px-4 rounded-xl transition-colors cursor-pointer';
+      cancelEditBtn.classList.add('hidden');
+      showError('');
+      closeExpenseModal();
+    }
+
+    function resetClearConfirm() {
+      clearAllBtn.classList.remove('hidden');
+      confirmClearBtn.classList.add('hidden');
+      cancelClearBtn.classList.add('hidden');
+    }
+
+    function isLoggedThisMonth(template) {
+      const currentMonth = getTodayISO().slice(0, 7);
+      return expenses.some((item) =>
+        (item.date || '').startsWith(currentMonth)
+        && item.description.toLowerCase() === template.description.toLowerCase()
+        && Number(item.amount) === Number(template.amount)
+      );
+    }
+
+    function logRecurringTemplate(template) {
+      expenses.unshift({
+        id: nextId++,
+        description: template.description,
+        amount: template.amount,
+        category: template.category || 'Other',
+        paymentMethod: template.paymentMethod || 'UPI',
+        date: getTodayISO()
+      });
+      saveExpenses();
+      render();
+      showToast('Recurring Expense Logged', `${template.description} · ${formatCurrency(template.amount)}`, 'success');
+    }
+
+    function deleteRecurringTemplate(id) {
+      const target = recurringTemplates.find((t) => t.id === id);
+      recurringTemplates = recurringTemplates.filter((t) => t.id !== id);
+      saveRecurring();
+      render();
+      showToast('Recurring Removed', target ? target.description : '', 'danger');
+    }
+
+    function renderRecurring() {
+      recurringList.innerHTML = '';
+
+      if (recurringTemplates.length === 0) {
+        recurringSection.classList.add('hidden');
+        return;
+      }
+
+      recurringSection.classList.remove('hidden');
+
+      const dueTemplates = recurringTemplates.filter((t) => !isLoggedThisMonth(t));
+      if (dueTemplates.length > 0) {
+        logAllDueBtn.classList.remove('hidden');
+      } else {
+        logAllDueBtn.classList.add('hidden');
+      }
+
+      recurringTemplates.forEach((tpl) => {
+        const logged = isLoggedThisMonth(tpl);
+        const style = CATEGORY_STYLES[tpl.category] || CATEGORY_STYLES.Other;
+
+        const li = document.createElement('li');
+        li.className = 'flex items-center justify-between bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 rounded-lg px-3 py-2 gap-2';
+
+        const left = document.createElement('div');
+        left.className = 'min-w-0 flex-1';
+
+        const title = document.createElement('span');
+        title.className = 'text-xs font-medium text-slate-800 dark:text-slate-100 truncate block';
+        title.textContent = `${tpl.description} · ${formatCurrency(tpl.amount)}`;
+
+        const meta = document.createElement('div');
+        meta.className = 'flex items-center gap-1.5 mt-0.5 flex-wrap';
+
+        const badge = document.createElement('span');
+        badge.className = `inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full ${style.badge}`;
+        badge.textContent = tpl.category || 'Other';
+
+        const paySpan = document.createElement('span');
+        paySpan.className = 'inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+        paySpan.textContent = tpl.paymentMethod || 'UPI';
+
+        meta.appendChild(badge);
+        meta.appendChild(paySpan);
+        left.appendChild(title);
+        left.appendChild(meta);
+
+        const right = document.createElement('div');
+        right.className = 'flex items-center gap-1.5 shrink-0';
+
+        const logBtn = document.createElement('button');
+        logBtn.type = 'button';
+        logBtn.textContent = logged ? 'Logged ✓' : '+ Log';
+        logBtn.className = logged
+          ? 'px-2 py-1 rounded-md text-[11px] font-medium bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 cursor-pointer'
+          : 'px-2 py-1 rounded-md text-[11px] font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer';
+        logBtn.addEventListener('click', () => {
+          logRecurringTemplate(tpl);
+        });
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = '×';
+        removeBtn.title = 'Remove recurring template';
+        removeBtn.setAttribute('aria-label', 'Remove recurring ' + tpl.description);
+        removeBtn.className = 'w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer text-sm leading-none';
+        removeBtn.addEventListener('click', () => {
+          deleteRecurringTemplate(tpl.id);
+        });
+
+        right.appendChild(logBtn);
+        right.appendChild(removeBtn);
+
+        li.appendChild(left);
+        li.appendChild(right);
+        recurringList.appendChild(li);
+      });
+    }
+
+    function getBudgetStats() {
+      const selectedMonth = filterMonthSelect.value;
+      const targetMonth = selectedMonth === 'All' ? getTodayISO().slice(0, 7) : selectedMonth;
+      const monthLabel = formatMonthLabel(targetMonth);
+      const monthSpent = expenses
+        .filter((item) => (item.type || 'expense') === 'expense' && (item.date || '').startsWith(targetMonth))
+        .reduce((sum, item) => sum + item.amount, 0);
+      const remaining = monthlyBudget - monthSpent;
+      return { monthLabel, monthSpent, remaining };
+    }
+
+    function getRemainingBoxColor(remainingRatio) {
+      // 1.0 (100% left) -> Green (hue 142, lightness 32%)
+      // 0.0 (0% left)   -> Dark Red (hue 0, lightness 26%)
+      const clamped = Math.max(0, Math.min(1, remainingRatio));
+      const hue = Math.round(clamped * 142);
+      const sat = 76;
+      const light = Math.round(26 + clamped * 6);
+      return `hsl(${hue}, ${sat}%, ${light}%)`;
+    }
+
+    function renderBudget() {
+      const { remaining } = getBudgetStats();
+      const t = I18N[currentLang] || I18N.en;
+
+      budgetDisplayAmount.textContent = monthlyBudget > 0 ? formatCurrency(monthlyBudget) : t.notSet;
+
+      if (monthlyBudget <= 0) {
+        budgetBar.style.width = '0%';
+        topRemainingEl.textContent = t.notSet;
+        topRemainingEl.className = 'text-xl font-bold text-white block mt-0.5';
+        topRemainingPct.textContent = `0% ${t.left}`;
+        topRemainingBox.style.backgroundColor = '#7f1d1d';
+        return;
+      }
+
+      const { monthSpent } = getBudgetStats();
+      const spentPct = Math.max(0, Math.min(100, Math.round((monthSpent / monthlyBudget) * 100)));
+      const remainingRatio = remaining / monthlyBudget;
+      const remainingPct = Math.max(0, Math.min(100, Math.round(remainingRatio * 100)));
+      budgetBar.style.width = `${spentPct}%`;
+      topRemainingBox.style.backgroundColor = getRemainingBoxColor(remainingRatio);
+      topRemainingEl.className = 'text-xl font-bold text-white block mt-0.5';
+
+      if (remaining < 0) {
+        topRemainingEl.textContent = `-${formatCurrency(Math.abs(remaining))}`;
+        topRemainingPct.textContent = `0% ${t.left}`;
+      } else {
+        topRemainingEl.textContent = formatCurrency(remaining);
+        topRemainingPct.textContent = `${remainingPct}% ${t.left}`;
+      }
+    }
+
+    function renderBreakdown(monthScopedExpenses, monthScopedTotal, selectedMonth) {
+      breakdownList.innerHTML = '';
+
+      if (!showBreakdown) {
+        breakdownModal.classList.add('hidden');
+        breakdownModal.classList.remove('flex');
+        breakdownModal.style.display = 'none';
+        return;
+      }
+
+      breakdownModal.classList.remove('hidden');
+      breakdownModal.classList.add('flex');
+      breakdownModal.style.display = 'flex';
+
+      if (monthScopedExpenses.length === 0 || monthScopedTotal <= 0) {
+        breakdownList.classList.add('hidden');
+        breakdownEmpty.classList.remove('hidden');
+        return;
+      }
+
+      breakdownList.classList.remove('hidden');
+      breakdownEmpty.classList.add('hidden');
+      breakdownTitle.textContent = selectedMonth === 'All'
+        ? 'Spending by Category'
+        : `Spending by Category (${formatMonthLabel(selectedMonth)})`;
+
+      const onlyExpenses = monthScopedExpenses.filter((item) => (item.type || 'expense') === 'expense');
+      const onlyExpenseTotal = onlyExpenses.reduce((sum, item) => sum + item.amount, 0);
+      if (onlyExpenses.length === 0 || onlyExpenseTotal <= 0) {
+        breakdownList.classList.add('hidden');
+        breakdownEmpty.classList.remove('hidden');
+        return;
+      }
+      const totalsByCategory = {};
+      onlyExpenses.forEach((item) => {
+        const cat = item.category || 'Other';
+        totalsByCategory[cat] = (totalsByCategory[cat] || 0) + item.amount;
+      });
+
+      const sortedCategories = Object.entries(totalsByCategory).sort((a, b) => b[1] - a[1]);
+
+      sortedCategories.forEach(([category, amount]) => {
+        const pct = (amount / onlyExpenseTotal) * 100;
+        const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.Other;
+
+        const row = document.createElement('div');
+        row.className = 'space-y-1';
+
+        const labelRow = document.createElement('div');
+        labelRow.className = 'flex items-center justify-between text-sm';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'font-medium text-slate-700 dark:text-slate-200';
+        nameSpan.textContent = category;
+
+        const valueSpan = document.createElement('span');
+        valueSpan.className = 'text-slate-600 dark:text-slate-300 font-medium';
+        valueSpan.textContent = `${formatCurrency(amount)} (${pct.toFixed(0)}%)`;
+
+        labelRow.appendChild(nameSpan);
+        labelRow.appendChild(valueSpan);
+
+        const track = document.createElement('div');
+        track.className = 'w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden';
+
+        const fill = document.createElement('div');
+        fill.className = `h-full ${style.bar} rounded-full transition-all duration-300`;
+        fill.style.width = `${pct.toFixed(1)}%`;
+
+        track.appendChild(fill);
+        row.appendChild(labelRow);
+        row.appendChild(track);
+        breakdownList.appendChild(row);
+      });
+    }
+
+    function getFilteredData() {
+      const selectedMonth = filterMonthSelect.value;
+      const selectedCategory = filterSelect.value;
+      const selectedPayment = filterPaymentSelect.value;
+      const query = searchInput.value.trim().toLowerCase();
+
+      const sortedExpenses = [...expenses].sort((a, b) => {
+        const dateCmp = (b.date || '').localeCompare(a.date || '');
+        return dateCmp !== 0 ? dateCmp : (b.id || 0) - (a.id || 0);
+      });
+
+      const monthScopedExpenses = selectedMonth === 'All'
+        ? sortedExpenses
+        : sortedExpenses.filter((item) => (item.date || '').startsWith(selectedMonth));
+
+      const monthScopedTotal = monthScopedExpenses
+        .filter((item) => (item.type || 'expense') === 'expense')
+        .reduce((sum, item) => sum + item.amount, 0);
+      const monthScopedIncome = monthScopedExpenses
+        .filter((item) => item.type === 'income')
+        .reduce((sum, item) => sum + item.amount, 0);
+      const netBalance = monthScopedIncome - monthScopedTotal;
+
+      const visibleExpenses = monthScopedExpenses.filter((item) => {
+        const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+        const matchesPayment = selectedPayment === 'All' || (item.paymentMethod || 'Cash') === selectedPayment;
+        const matchesQuery = !query
+          || item.description.toLowerCase().includes(query)
+          || (item.remark || '').toLowerCase().includes(query)
+          || (item.category || '').toLowerCase().includes(query)
+          || (item.paymentMethod || '').toLowerCase().includes(query);
+        return matchesCategory && matchesPayment && matchesQuery;
+      });
+
+      return {
+        selectedMonth,
+        selectedCategory,
+        selectedPayment,
+        query,
+        monthScopedExpenses,
+        monthScopedTotal,
+        monthScopedIncome,
+        netBalance,
+        visibleExpenses
+      };
+    }
+
+    const CHART_COLORS = [
+      '#10b981', '#f59e0b', '#ec4899', '#0ea5e9',
+      '#8b5cf6', '#6366f1', '#f43f5e', '#14b8a6', '#64748b'
+    ];
+
+    function renderExpensesChart(visibleExpenses) {
+      if (!showExpensesChart || visibleExpenses.length === 0) {
+        expensesChartBox.classList.add('hidden');
+        return;
+      }
+
+      expensesChartBox.classList.remove('hidden');
+
+      const totals = {};
+      let grandTotal = 0;
+      visibleExpenses
+        .filter((item) => (item.type || 'expense') === 'expense')
+        .forEach((item) => {
+        const cat = item.category || 'Other';
+        totals[cat] = (totals[cat] || 0) + item.amount;
+        grandTotal += item.amount;
+      });
+
+      const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+      const ctx = expensesChartCanvas.getContext('2d');
+      const w = expensesChartCanvas.width;
+      const h = expensesChartCanvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+      const radius = 88;
+      const innerRadius = 52;
+
+      ctx.clearRect(0, 0, w, h);
+
+      let startAngle = -Math.PI / 2;
+      entries.forEach(([, val], idx) => {
+        const sliceAngle = grandTotal > 0 ? (val / grandTotal) * Math.PI * 2 : 0;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fillStyle = CHART_COLORS[idx % CHART_COLORS.length];
+        ctx.fill();
+        startAngle += sliceAngle;
+      });
+
+      // Cut inner hole for doughnut look
+      ctx.beginPath();
+      ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
+      ctx.fillStyle = isDarkMode ? '#1e293b' : '#f8fafc';
+      ctx.fill();
+
+      // Center total text
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = isDarkMode ? '#94a3b8' : '#64748b';
+      ctx.font = '600 11px Inter, system-ui, sans-serif';
+      ctx.fillText('TOTAL', cx, cy - 12);
+      ctx.fillStyle = isDarkMode ? '#f8fafc' : '#0f172a';
+      ctx.font = 'bold 15px Inter, system-ui, sans-serif';
+      ctx.fillText(formatCurrency(grandTotal), cx, cy + 8);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+
+      // Legend
+      expensesChartLegend.innerHTML = '';
+      entries.forEach(([cat, val], idx) => {
+        const pct = grandTotal > 0 ? Math.round((val / grandTotal) * 100) : 0;
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-200 truncate';
+
+        const dot = document.createElement('span');
+        dot.className = 'w-2.5 h-2.5 rounded-full shrink-0';
+        dot.style.backgroundColor = CHART_COLORS[idx % CHART_COLORS.length];
+
+        const txt = document.createElement('span');
+        txt.className = 'truncate font-medium';
+        txt.textContent = `${cat} (${pct}%)`;
+
+        row.appendChild(dot);
+        row.appendChild(txt);
+        expensesChartLegend.appendChild(row);
+      });
+    }
+
+    function render() {
+      syncCategoryDropdowns();
+      syncMonthOptions();
+      renderRecurring();
+
+      const {
+        selectedMonth,
+        selectedCategory,
+        selectedPayment,
+        query,
+        monthScopedExpenses,
+        monthScopedTotal,
+        monthScopedIncome,
+        netBalance,
+        visibleExpenses
+      } = getFilteredData();
+
+      const visibleTotal = visibleExpenses.reduce((sum, item) => sum + item.amount, 0);
+
+      const hasExpenses = expenses.length > 0;
+      const hasVisible = visibleExpenses.length > 0;
+      exportCsvBtn.disabled = !hasVisible;
+      exportPdfBtn.disabled = !hasVisible;
+      exportJpgBtn.disabled = !hasVisible;
+      toggleExpensesChartBtn.disabled = !hasVisible;
+      backupJsonBtn.disabled = !hasExpenses && recurringTemplates.length === 0;
+      clearAllBtn.disabled = !hasExpenses;
+
+      listEl.innerHTML = '';
+
+      if (visibleExpenses.length === 0) {
+        emptyStateEl.textContent = expenses.length === 0
+          ? 'No expenses yet. Add your first one above!'
+          : 'No expenses match your search or filters.';
+        emptyStateEl.classList.remove('hidden');
+      } else {
+        emptyStateEl.classList.add('hidden');
+      }
+
+      visibleExpenses.forEach((item) => {
+        const isEditing = item.id === editingId;
+
+        const li = document.createElement('li');
+        li.className = isEditing
+          ? 'flex items-center justify-between bg-sky-50 dark:bg-sky-950/50 border border-sky-300 dark:border-sky-700 rounded-lg px-3.5 py-2.5 gap-2'
+          : 'flex items-center justify-between bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 rounded-lg px-3.5 py-2.5 gap-2';
+
+        const leftGroup = document.createElement('div');
+        leftGroup.className = 'min-w-0 flex-1';
+
+        const descSpan = document.createElement('span');
+        descSpan.className = 'text-base font-semibold text-slate-800 dark:text-slate-100 truncate block';
+        descSpan.textContent = item.description;
+
+        const metaRow = document.createElement('div');
+        metaRow.className = 'flex items-center gap-1.5 mt-1 flex-wrap';
+
+        const badgeSpan = document.createElement('span');
+        const style = CATEGORY_STYLES[item.category] || CATEGORY_STYLES.Other;
+        badgeSpan.className = `inline-block text-[11px] font-medium px-2 py-0.5 rounded-full ${style.badge}`;
+        badgeSpan.textContent = item.category || 'Other';
+
+        const paymentBadge = document.createElement('span');
+        paymentBadge.className = 'inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-200';
+        paymentBadge.textContent = item.paymentMethod || 'Cash';
+
+        const dateSpan = document.createElement('span');
+        dateSpan.className = 'text-[11px] text-slate-400 dark:text-slate-500';
+        dateSpan.textContent = formatDate(item.date);
+
+        metaRow.appendChild(badgeSpan);
+        metaRow.appendChild(paymentBadge);
+        metaRow.appendChild(dateSpan);
+
+        leftGroup.appendChild(descSpan);
+        if (item.remark) {
+          const remarkSpan = document.createElement('p');
+          remarkSpan.className = 'text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5';
+          remarkSpan.textContent = item.remark;
+          leftGroup.appendChild(remarkSpan);
+        }
+        leftGroup.appendChild(metaRow);
+
+        const rightGroup = document.createElement('div');
+        rightGroup.className = 'flex items-center gap-2 shrink-0';
+
+        const isIncome = item.type === 'income';
+        const amountSpan = document.createElement('span');
+        amountSpan.className = isIncome
+          ? 'text-base font-bold text-emerald-600 dark:text-emerald-400 mr-1'
+          : 'text-base font-bold text-slate-900 dark:text-white mr-1';
+        amountSpan.textContent = (isIncome ? '+' : '') + formatCurrency(item.amount);
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.textContent = 'Edit';
+        editBtn.title = 'Edit expense';
+        editBtn.setAttribute('aria-label', 'Edit ' + item.description);
+        editBtn.className = 'px-2 py-1 rounded-md text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 transition-colors cursor-pointer';
+        editBtn.addEventListener('click', () => {
+          startEdit(item);
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.textContent = '×';
+        deleteBtn.title = 'Remove expense';
+        deleteBtn.setAttribute('aria-label', 'Remove ' + item.description);
+        deleteBtn.className = 'w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer text-base leading-none';
+        deleteBtn.addEventListener('click', () => {
+          deleteExpense(item.id);
+        });
+
+        rightGroup.appendChild(amountSpan);
+        rightGroup.appendChild(editBtn);
+        rightGroup.appendChild(deleteBtn);
+
+        li.appendChild(leftGroup);
+        li.appendChild(rightGroup);
+        listEl.appendChild(li);
+      });
+
+      const tLang = I18N[currentLang] || I18N.en;
+      totalLabel.textContent = selectedMonth === 'All'
+        ? tLang.totalSpent
+        : `${tLang.totalSpent} (${formatMonthLabel(selectedMonth)})`;
+      totalEl.textContent = formatCurrency(monthScopedTotal);
+      totalIncomeEl.textContent = formatCurrency(monthScopedIncome);
+      netBalanceEl.textContent = netBalance < 0
+        ? `-${formatCurrency(Math.abs(netBalance))}`
+        : formatCurrency(netBalance);
+      netBalanceEl.className = netBalance < 0
+        ? 'text-base font-bold text-rose-600 dark:text-rose-400 block mt-0.5'
+        : 'text-base font-bold text-emerald-700 dark:text-emerald-400 block mt-0.5';
+
+      if (selectedCategory !== 'All' || selectedPayment !== 'All' || query) {
+        filteredSummaryEl.textContent = `Showing: ${formatCurrency(visibleTotal)}`;
+        filteredSummaryEl.classList.remove('hidden');
+      } else {
+        filteredSummaryEl.classList.add('hidden');
+      }
+
+      countEl.textContent = visibleExpenses.length === 1
+        ? '1 item'
+        : `${visibleExpenses.length} items`;
+
+      toggleAddBtn.textContent = (I18N[currentLang] || I18N.en).addExpense;
+      toggleAddBtn.className = 'w-full rounded-xl bg-gradient-to-r from-pink-600 via-rose-500 to-red-500 hover:from-pink-700 hover:via-rose-600 hover:to-red-600 active:scale-[0.99] text-white px-3 py-3 text-sm sm:text-base font-bold tracking-wide shadow-md shadow-rose-500/25 transition-all cursor-pointer';
+
+      if (showExpenses) {
+        expensesModal.classList.remove('hidden');
+        expensesModal.classList.add('flex');
+        expensesModal.style.display = 'flex';
+      } else {
+        expensesModal.classList.add('hidden');
+        expensesModal.classList.remove('flex');
+        expensesModal.style.display = 'none';
+      }
+      toggleExpensesBtn.textContent = `📋 ${(I18N[currentLang] || I18N.en).expenses} (${expenses.length})`;
+      toggleExpensesBtn.className = 'w-full rounded-xl border border-sky-200 dark:border-sky-800/70 bg-sky-50/90 dark:bg-sky-950/50 hover:bg-sky-100 dark:hover:bg-sky-900/60 active:scale-[0.98] shadow-sm px-2.5 py-3 text-sm sm:text-base font-bold text-sky-800 dark:text-sky-200 transition-all cursor-pointer truncate';
+
+      toggleBreakdownBtn.textContent = `📊 ${(I18N[currentLang] || I18N.en).categories}`;
+      toggleBreakdownBtn.className = 'w-full rounded-xl border border-violet-200 dark:border-violet-800/70 bg-violet-50/90 dark:bg-violet-950/50 hover:bg-violet-100 dark:hover:bg-violet-900/60 active:scale-[0.98] shadow-sm px-2.5 py-3 text-sm sm:text-base font-bold text-violet-800 dark:text-violet-200 transition-all cursor-pointer truncate';
+
+      if (showSearchModal) {
+        searchModal.classList.remove('hidden');
+        searchModal.classList.add('flex');
+        searchModal.style.display = 'flex';
+      } else {
+        searchModal.classList.add('hidden');
+        searchModal.classList.remove('flex');
+        searchModal.style.display = 'none';
+      }
+
+      searchSummary.textContent = `${visibleExpenses.length} · ${formatCurrency(visibleTotal)}`;
+      searchResultsList.innerHTML = '';
+      if (visibleExpenses.length === 0) {
+        searchEmptyState.classList.remove('hidden');
+      } else {
+        searchEmptyState.classList.add('hidden');
+        visibleExpenses.forEach((item) => {
+          const cloneLi = document.createElement('li');
+          cloneLi.className = 'flex items-center justify-between bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 rounded-lg px-3.5 py-2.5 gap-2';
+
+          const left = document.createElement('div');
+          left.className = 'min-w-0 flex-1';
+
+          const dSpan = document.createElement('span');
+          dSpan.className = 'text-base font-semibold text-slate-800 dark:text-slate-100 truncate block';
+          dSpan.textContent = item.description;
+
+          const meta = document.createElement('div');
+          meta.className = 'flex items-center gap-1.5 mt-1 flex-wrap';
+
+          const bSpan = document.createElement('span');
+          const st = CATEGORY_STYLES[item.category] || CATEGORY_STYLES.Other;
+          bSpan.className = `inline-block text-[11px] font-medium px-2 py-0.5 rounded-full ${st.badge}`;
+          bSpan.textContent = item.category || 'Other';
+
+          const pSpan = document.createElement('span');
+          pSpan.className = 'inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-200';
+          pSpan.textContent = item.paymentMethod || 'Cash';
+
+          const dtSpan = document.createElement('span');
+          dtSpan.className = 'text-[11px] text-slate-400 dark:text-slate-500';
+          dtSpan.textContent = formatDate(item.date);
+
+          meta.appendChild(bSpan);
+          meta.appendChild(pSpan);
+          meta.appendChild(dtSpan);
+          left.appendChild(dSpan);
+          if (item.remark) {
+            const rSpan = document.createElement('p');
+            rSpan.className = 'text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5';
+            rSpan.textContent = item.remark;
+            left.appendChild(rSpan);
+          }
+          left.appendChild(meta);
+
+          const isInc = item.type === 'income';
+          const amt = document.createElement('span');
+          amt.className = isInc
+            ? 'text-base font-bold text-emerald-600 dark:text-emerald-400 shrink-0'
+            : 'text-base font-bold text-slate-900 dark:text-white shrink-0';
+          amt.textContent = (isInc ? '+' : '') + formatCurrency(item.amount);
+
+          cloneLi.appendChild(left);
+          cloneLi.appendChild(amt);
+          searchResultsList.appendChild(cloneLi);
+        });
+      }
+
+      renderExpensesChart(visibleExpenses);
+      renderBudget();
+      renderBreakdown(monthScopedExpenses, monthScopedTotal, selectedMonth);
+    }
+
+    function escapeCsv(value) {
+      const str = String(value ?? '');
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    }
+
+    function getSafeFilePrefix() {
+      const slug = (userProfile.name || 'expense_tracker')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+      return slug || 'expense_tracker';
+    }
+
+    function loadAvatarImage(src) {
+      return new Promise((resolve) => {
+        if (!src) {
+          resolve(null);
+          return;
+        }
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = src;
+      });
+    }
+
+    // Export visible expenses as CSV (with UTF-8 BOM for Marathi support in Excel)
+    exportCsvBtn.addEventListener('click', () => {
+      const { visibleExpenses } = getFilteredData();
+      if (visibleExpenses.length === 0) return;
+
+      const header = ['Date', 'Type', 'Description', 'Remark', 'Category', 'Payment Method', 'Amount (INR)'];
+      const rows = visibleExpenses.map((item) => [
+        escapeCsv(item.date || ''),
+        escapeCsv(item.type === 'income' ? 'Income' : 'Expense'),
+        escapeCsv(item.description),
+        escapeCsv(item.remark || ''),
+        escapeCsv(item.category || 'Other'),
+        escapeCsv(item.paymentMethod || 'Cash'),
+        item.amount.toFixed(2)
+      ]);
+
+      const csvContent = '\uFEFF' + [header.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${getSafeFilePrefix()}_expenses_${getTodayISO()}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showDataStatus('CSV exported.');
+      showToast('CSV Exported', `${visibleExpenses.length} expenses saved`, 'success');
+    });
+
+    // Build a clean high-resolution Canvas page (supports Marathi/Unicode + Profile Photo + Current Name)
+    function renderReportPageCanvas(rowsSlice, options) {
+      const {
+        avatarImg,
+        scopeLabel,
+        total,
+        totalIncomeReport,
+        totalCount,
+        monthLabel,
+        remaining,
+        isFirstPage,
+        pageIndex,
+        totalPages,
+        fixedHeight
+      } = options;
+
+      const rowHeight = 38;
+      const headerHeight = isFirstPage ? 190 : 68;
+      const footerHeight = 46;
+      const width = 900;
+      const computedHeight = headerHeight + (rowsSlice.length + 1) * rowHeight + footerHeight;
+      const height = fixedHeight ? Math.max(fixedHeight, computedHeight) : computedHeight;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      // Background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      // Top Slate-Teal accent bar
+      ctx.fillStyle = '#4b6b78';
+      ctx.fillRect(0, 0, width, 10);
+
+      if (isFirstPage) {
+        // Draw circular profile photo or initials badge
+        const cx = 68;
+        const cy = 62;
+        const r = 28;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        if (avatarImg) {
+          ctx.drawImage(avatarImg, cx - r, cy - r, r * 2, r * 2);
+        } else {
+          ctx.fillStyle = '#d1fae5';
+          ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+          ctx.fillStyle = '#064e3b';
+          ctx.font = 'bold 20px Inter, system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(getInitials(userProfile.name), cx, cy + 1);
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'alphabetic';
+        }
+        ctx.restore();
+
+        // Ring around avatar
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Dynamic User Name & App Title
+        const displayName = userProfile.name || 'Personal Expense Tracker';
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 24px Inter, system-ui, sans-serif';
+        ctx.fillText(`${displayName} — Personal Expense Tracker`, 112, 56);
+
+        ctx.fillStyle = '#475569';
+        ctx.font = '14px Inter, system-ui, sans-serif';
+        ctx.fillText(`Report Date: ${formatDate(getTodayISO())}   |   Filter: ${scopeLabel}`, 112, 82);
+
+        // Line 1: Income, Spent & Net Balance
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 17px Inter, system-ui, sans-serif';
+        ctx.fillText(`Income: ${formatCurrency(totalIncomeReport)}   |   Spent: ${formatCurrency(total)}   |   Balance: ${formatCurrency(totalIncomeReport - total)}`, 40, 130);
+
+        // Line 2: Monthly Budget & Remaining Budget (no overlap!)
+        ctx.font = 'bold 16px Inter, system-ui, sans-serif';
+        if (monthlyBudget <= 0) {
+          ctx.fillStyle = '#64748b';
+          ctx.fillText(`Remaining Budget (${monthLabel}): Not set`, 40, 158);
+        } else if (remaining < 0) {
+          ctx.fillStyle = '#e11d48';
+          ctx.fillText(`Budget (${monthLabel}): ${formatCurrency(monthlyBudget)}   |   Over Budget: ${formatCurrency(Math.abs(remaining))}`, 40, 158);
+        } else {
+          ctx.fillStyle = '#047857';
+          ctx.fillText(`Budget (${monthLabel}): ${formatCurrency(monthlyBudget)}   |   Remaining Budget: ${formatCurrency(remaining)}`, 40, 158);
+        }
+      } else {
+        const displayName = userProfile.name || 'Personal Expense Tracker';
+        ctx.fillStyle = '#475569';
+        ctx.font = 'bold 14px Inter, system-ui, sans-serif';
+        ctx.fillText(`${displayName} — Personal Expense Tracker (Continued)`, 40, 44);
+      }
+
+      // Table Header
+      const tableTop = headerHeight;
+      ctx.fillStyle = '#f1f5f9';
+      ctx.fillRect(40, tableTop, width - 80, rowHeight);
+
+      ctx.fillStyle = '#334155';
+      ctx.font = 'bold 13px Inter, system-ui, sans-serif';
+      ctx.fillText('DATE', 54, tableTop + 24);
+      ctx.fillText('DESCRIPTION', 175, tableTop + 24);
+      ctx.fillText('CATEGORY', 475, tableTop + 24);
+      ctx.fillText('PAYMENT', 605, tableTop + 24);
+      ctx.textAlign = 'right';
+      ctx.fillText('AMOUNT', width - 54, tableTop + 24);
+      ctx.textAlign = 'left';
+
+      // Table Rows (uses browser's native Unicode font so Marathi text renders clearly!)
+      rowsSlice.forEach((item, index) => {
+        const y = tableTop + (index + 1) * rowHeight;
+        if (index % 2 === 1) {
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(40, y, width - 80, rowHeight);
+        }
+
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.beginPath();
+        ctx.moveTo(40, y + rowHeight);
+        ctx.lineTo(width - 40, y + rowHeight);
+        ctx.stroke();
+
+        ctx.fillStyle = '#475569';
+        ctx.font = '13px Inter, system-ui, sans-serif';
+        ctx.fillText(formatDate(item.date), 54, y + 24);
+
+        ctx.fillStyle = '#0f172a';
+        const desc = item.description.length > 34 ? item.description.slice(0, 31) + '...' : item.description;
+        ctx.fillText(desc, 175, y + 24);
+
+        ctx.fillStyle = '#334155';
+        ctx.fillText(item.category || 'Other', 475, y + 24);
+        ctx.fillText(item.paymentMethod || 'Cash', 605, y + 24);
+
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 13px Inter, system-ui, sans-serif';
+        const rowInc = item.type === 'income';
+        ctx.fillStyle = rowInc ? '#059669' : '#0f172a';
+        ctx.fillText((rowInc ? '+' : '') + formatCurrency(item.amount), width - 54, y + 24);
+        ctx.textAlign = 'left';
+      });
+
+      if (totalPages > 1) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '12px Inter, system-ui, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(`Page ${pageIndex + 1} of ${totalPages}`, width - 40, height - 18);
+        ctx.textAlign = 'left';
+      }
+
+      return canvas;
+    }
+
+    function getExportScopeLabel() {
+      const m = filterMonthSelect.value === 'All' ? 'All Months' : formatMonthLabel(filterMonthSelect.value);
+      const c = filterSelect.value === 'All' ? 'All Categories' : filterSelect.value;
+      const p = filterPaymentSelect.value === 'All' ? 'All Payments' : filterPaymentSelect.value;
+      return `${m}, ${c}, ${p}`;
+    }
+
+    // Export visible expenses as JPG image
+    exportJpgBtn.addEventListener('click', async () => {
+      const { visibleExpenses } = getFilteredData();
+      if (visibleExpenses.length === 0) return;
+
+      const avatarImg = await loadAvatarImage(userProfile.photo);
+      const total = visibleExpenses.filter((i) => (i.type || 'expense') === 'expense').reduce((sum, item) => sum + item.amount, 0);
+      const totalIncomeReport = visibleExpenses.filter((i) => i.type === 'income').reduce((sum, item) => sum + item.amount, 0);
+      const { monthLabel, remaining } = getBudgetStats();
+
+      const canvas = renderReportPageCanvas(visibleExpenses, {
+        avatarImg,
+        scopeLabel: getExportScopeLabel(),
+        total,
+        totalIncomeReport,
+        totalCount: visibleExpenses.length,
+        monthLabel,
+        remaining,
+        isFirstPage: true,
+        pageIndex: 0,
+        totalPages: 1
+      });
+
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/jpeg', 0.95);
+      link.download = `${getSafeFilePrefix()}_expenses_${getTodayISO()}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showDataStatus('JPG report downloaded.');
+      showToast('JPG Report Downloaded', `${visibleExpenses.length} expenses included`, 'success');
+    });
+
+    // Export visible expenses as PDF (renders via high-res Canvas so Marathi/Unicode + Profile Photo are crystal clear!)
+    exportPdfBtn.addEventListener('click', async () => {
+      const { visibleExpenses } = getFilteredData();
+      if (visibleExpenses.length === 0) return;
+
+      const avatarImg = await loadAvatarImage(userProfile.photo);
+      const scopeLabel = getExportScopeLabel();
+      const total = visibleExpenses.filter((i) => (i.type || 'expense') === 'expense').reduce((sum, item) => sum + item.amount, 0);
+      const totalIncomeReport = visibleExpenses.filter((i) => i.type === 'income').reduce((sum, item) => sum + item.amount, 0);
+      const { monthLabel, remaining } = getBudgetStats();
+
+      if (window.jspdf && window.jspdf.jsPDF) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const a4CanvasHeight = Math.round(900 * (pageHeight / pageWidth));
+
+        // Paginate cleanly: 26 rows on page 1, 29 rows on subsequent pages
+        const pages = [];
+        const firstPageLimit = 26;
+        const nextPageLimit = 29;
+        pages.push(visibleExpenses.slice(0, firstPageLimit));
+        for (let i = firstPageLimit; i < visibleExpenses.length; i += nextPageLimit) {
+          pages.push(visibleExpenses.slice(i, i + nextPageLimit));
+        }
+
+        pages.forEach((slice, idx) => {
+          if (idx > 0) doc.addPage();
+          const pageCanvas = renderReportPageCanvas(slice, {
+            avatarImg,
+            scopeLabel,
+            total,
+            totalIncomeReport,
+            totalCount: visibleExpenses.length,
+            monthLabel,
+            remaining,
+            isFirstPage: idx === 0,
+            pageIndex: idx,
+            totalPages: pages.length,
+            fixedHeight: a4CanvasHeight
+          });
+          const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+          doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight);
+        });
+
+        doc.save(`${getSafeFilePrefix()}_expenses_${getTodayISO()}.pdf`);
+        showDataStatus('PDF report downloaded.');
+        showToast('PDF Report Downloaded', `${visibleExpenses.length} expenses included`, 'success');
+      } else {
+        const canvas = renderReportPageCanvas(visibleExpenses, {
+          avatarImg,
+          scopeLabel,
+          total,
+          totalCount: visibleExpenses.length,
+          monthLabel,
+          remaining,
+          isFirstPage: true,
+          pageIndex: 0,
+          totalPages: 1
+        });
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        link.download = `${getSafeFilePrefix()}_expenses_${getTodayISO()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showDataStatus('PDF library unavailable offline; downloaded JPG report instead.');
+        showToast('JPG Report Downloaded', 'Offline fallback used for PDF', 'info');
+      }
+    });
+
+    backupJsonBtn.addEventListener('click', () => {
+      if (expenses.length === 0 && recurringTemplates.length === 0) return;
+
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        monthlyBudget,
+        expenses,
+        recurringTemplates
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `expense_backup_${getTodayISO()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showDataStatus('Backup downloaded.');
+      showToast('JSON Backup Saved', `${expenses.length} expenses backed up`, 'success');
+    });
+
+    restoreJsonInput.addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          const list = Array.isArray(parsed) ? parsed : parsed.expenses;
+
+          if (!Array.isArray(list)) {
+            showDataStatus('Invalid backup file format.', true);
+            showToast('Restore Failed', 'Invalid backup file format', 'danger');
+            return;
+          }
+
+          const fallbackDate = getTodayISO();
+          const cleaned = list
+            .filter((item) => item && typeof item.description === 'string' && !isNaN(Number(item.amount)) && Number(item.amount) > 0)
+            .map((item, idx) => ({
+              id: Number(item.id) || idx + 1,
+              description: item.description.trim(),
+              amount: Number(item.amount),
+              category: item.category || 'Other',
+              paymentMethod: item.paymentMethod || 'Cash',
+              date: item.date || fallbackDate
+            }));
+
+          expenses = cleaned;
+          nextId = expenses.reduce((max, item) => Math.max(max, item.id || 0), 0) + 1;
+
+          if (Array.isArray(parsed.recurringTemplates)) {
+            recurringTemplates = parsed.recurringTemplates
+              .filter((t) => t && typeof t.description === 'string' && !isNaN(Number(t.amount)) && Number(t.amount) > 0)
+              .map((t) => ({ ...t, paymentMethod: t.paymentMethod || 'UPI' }));
+            nextRecurringId = recurringTemplates.reduce((max, item) => Math.max(max, item.id || 0), 0) + 1;
+            saveRecurring();
+          }
+
+          if (typeof parsed.monthlyBudget === 'number' && parsed.monthlyBudget >= 0) {
+            monthlyBudget = parsed.monthlyBudget;
+            budgetInput.value = monthlyBudget > 0 ? monthlyBudget : '';
+            saveBudget(monthlyBudget);
+          }
+
+          cancelEdit();
+          saveExpenses();
+          render();
+          showDataStatus(`Restored ${expenses.length} expenses.`);
+          showToast('Backup Restored', `Loaded ${expenses.length} expenses`, 'success');
+        } catch (err) {
+          showDataStatus('Could not read that JSON file.', true);
+          showToast('Restore Failed', 'Could not read that JSON file', 'danger');
+        } finally {
+          restoreJsonInput.value = '';
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    clearAllBtn.addEventListener('click', () => {
+      if (expenses.length === 0) return;
+      clearAllBtn.classList.add('hidden');
+      confirmClearBtn.classList.remove('hidden');
+      cancelClearBtn.classList.remove('hidden');
+    });
+
+    cancelClearBtn.addEventListener('click', () => {
+      resetClearConfirm();
+    });
+
+    confirmClearBtn.addEventListener('click', () => {
+      expenses = [];
+      cancelEdit();
+      saveExpenses();
+      resetClearConfirm();
+      render();
+      showDataStatus('All expenses cleared.');
+      showToast('All Expenses Cleared', 'Your list has been reset', 'danger');
+    });
+
+    logAllDueBtn.addEventListener('click', () => {
+      const due = recurringTemplates.filter((t) => !isLoggedThisMonth(t));
+      if (due.length === 0) return;
+      const today = getTodayISO();
+      due.forEach((tpl) => {
+        expenses.unshift({
+          id: nextId++,
+          description: tpl.description,
+          amount: tpl.amount,
+          category: tpl.category || 'Other',
+          paymentMethod: tpl.paymentMethod || 'UPI',
+          date: today
+        });
+      });
+      saveExpenses();
+      render();
+      showToast('All Due Bills Logged', `Added ${due.length} recurring expenses`, 'success');
+    });
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const description = descInput.value.trim();
+      const amount = parseFloat(amountInput.value);
+      const category = categoryInput.value;
+      const remark = remarkInput.value.trim();
+      const paymentMethod = paymentInput.value;
+      const date = dateInput.value || getTodayISO();
+      const isRecurring = recurringInput.checked;
+
+      if (!description) {
+        showError('Please enter a description for the expense.');
+        descInput.focus();
+        return;
+      }
+
+      if (isNaN(amount) || amount <= 0) {
+        showError('Please enter an amount greater than 0.');
+        amountInput.focus();
+        return;
+      }
+
+      showError('');
+
+      if (editingId !== null) {
+        expenses = expenses.map((item) =>
+          item.id === editingId
+            ? { ...item, type: entryType, description, amount, category, remark, paymentMethod, date }
+            : item
+        );
+        cancelEdit();
+        showToast('Expense Updated', `${description} · ${formatCurrency(amount)}`, 'info');
+      } else {
+        expenses.unshift({
+          id: nextId++,
+          type: entryType,
+          description,
+          amount,
+          category,
+          remark,
+          paymentMethod,
+          date
+        });
+
+        if (isRecurring) {
+          const alreadyExists = recurringTemplates.some(
+            (t) => t.description.toLowerCase() === description.toLowerCase() && Number(t.amount) === amount
+          );
+          if (!alreadyExists) {
+            recurringTemplates.push({
+              id: nextRecurringId++,
+              description,
+              amount,
+              category,
+              paymentMethod
+            });
+            saveRecurring();
+          }
+        }
+
+        descInput.value = '';
+        amountInput.value = '';
+        categoryInput.value = 'Food & Tea';
+        remarkInput.value = '';
+        setEntryType('expense');
+        refreshCustomSelect(categoryInput);
+        dateInput.value = getTodayISO();
+        recurringInput.checked = false;
+        closeExpenseModal();
+        showToast(entryType === 'income' ? 'Income Added' : 'Expense Added', `${entryType === 'income' ? '+' : ''}${formatCurrency(amount)} · ${description}`, 'success');
+      }
+
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
+      saveExpenses();
+      render();
+    });
+
+    cancelEditBtn.addEventListener('click', () => {
+      cancelEdit();
+      render();
+    });
+
+    budgetInput.addEventListener('input', () => {
+      const val = parseFloat(budgetInput.value);
+      monthlyBudget = isNaN(val) || val < 0 ? 0 : val;
+      saveBudget(monthlyBudget);
+      renderBudget();
+    });
+
+    searchInput.addEventListener('input', () => {
+      render();
+    });
+
+    filterMonthSelect.addEventListener('change', () => {
+      render();
+    });
+
+    filterSelect.addEventListener('change', () => {
+      render();
+    });
+
+    filterPaymentSelect.addEventListener('change', () => {
+      render();
+    });
+
+    function deleteExpense(id) {
+      const target = expenses.find((item) => item.id === id);
+      if (editingId === id) {
+        cancelEdit();
+      }
+      expenses = expenses.filter((item) => item.id !== id);
+      saveExpenses();
+      render();
+      showToast('Expense Deleted', target ? target.description : '', 'danger');
+    }
+
+    toggleAddBtn.addEventListener('click', () => {
+      cancelEdit();
+      setEntryType('expense');
+      openExpenseModal();
+    });
+
+    toggleAddIncomeBtn.addEventListener('click', () => {
+      cancelEdit();
+      setEntryType('income');
+      openExpenseModal();
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+      cancelEdit();
+    });
+
+    expenseModal.addEventListener('click', (e) => {
+      if (e.target === expenseModal) {
+        cancelEdit();
+      }
+    });
+
+    toggleExpensesBtn.addEventListener('click', () => {
+      showExpenses = true;
+      render();
+    });
+
+    closeExpensesBtn.addEventListener('click', () => {
+      showExpenses = false;
+      render();
+    });
+
+    expensesModal.addEventListener('click', (e) => {
+      if (e.target === expensesModal) {
+        showExpenses = false;
+        render();
+      }
+    });
+
+    toggleBreakdownBtn.addEventListener('click', () => {
+      showBreakdown = true;
+      render();
+    });
+
+    toggleSearchBtn.addEventListener('click', () => {
+      showSearchModal = true;
+      render();
+      searchInput.focus();
+    });
+
+    closeSearchBtn.addEventListener('click', () => {
+      showSearchModal = false;
+      render();
+    });
+
+    searchModal.addEventListener('click', (e) => {
+      if (e.target === searchModal) {
+        showSearchModal = false;
+        render();
+      }
+    });
+
+    closeBreakdownBtn.addEventListener('click', () => {
+      showBreakdown = false;
+      render();
+    });
+
+    breakdownModal.addEventListener('click', (e) => {
+      if (e.target === breakdownModal) {
+        showBreakdown = false;
+        render();
+      }
+    });
+
+    enhanceSelect(categoryInput, false);
+    enhanceSelect(paymentInput, false);
+    enhanceSelect(filterMonthSelect, true);
+    enhanceSelect(filterSelect, true);
+    enhanceSelect(filterPaymentSelect, true);
+
+    toggleExpensesChartBtn.addEventListener('click', () => {
+      showExpensesChart = !showExpensesChart;
+      toggleExpensesChartBtn.textContent = showExpensesChart ? '📊 Hide Chart' : '📊 Chart';
+      render();
+    });
+
+    function openBudgetModal() {
+      budgetInput.value = monthlyBudget > 0 ? monthlyBudget : '';
+      budgetModal.classList.remove('hidden');
+      budgetModal.classList.add('flex');
+      budgetModal.style.display = 'flex';
+      budgetInput.focus();
+    }
+
+    function closeBudgetModal() {
+      budgetModal.classList.add('hidden');
+      budgetModal.classList.remove('flex');
+      budgetModal.style.display = 'none';
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
+    }
+
+    toggleBudgetBtn.addEventListener('click', openBudgetModal);
+    closeBudgetBtn.addEventListener('click', closeBudgetModal);
+    budgetModal.addEventListener('click', (e) => {
+      if (e.target === budgetModal) closeBudgetModal();
+    });
+
+    saveBudgetBtn.addEventListener('click', () => {
+      const val = parseFloat(budgetInput.value);
+      monthlyBudget = isNaN(val) || val < 0 ? 0 : val;
+      saveBudget(monthlyBudget);
+      renderBudget();
+      closeBudgetModal();
+      showToast('Budget Updated', monthlyBudget > 0 ? formatCurrency(monthlyBudget) : 'Cleared', 'success');
+    });
+
+    applyLanguage();
+    render();
+  </script>
+</body>
+</html>
